@@ -22,13 +22,13 @@ jobs:
           pip install duckdb pandas requests
 
       - name: Run data update script
-        run: python main.py
+        run: python update_data.py
 
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add downloads_history.csv
+          git add public/downloads_history.csv
           git commit -m "Update weekly downloads data"
           git push
 
@@ -36,8 +36,12 @@ jobs:
     needs: update-data
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./public
+          publish_branch: gh-pages
