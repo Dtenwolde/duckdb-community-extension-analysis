@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DuckDB Community Extension Downloads</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <canvas id="downloadsChart"></canvas>
+    <script>
+        fetch('downloads_history.csv')
+            .then(response => response.text())
+            .then(csvData => {
+                // Parse CSV data and transform it for Chart.js
+                // This would involve converting the weekly data into datasets for each extension
+            })
+            .catch(error => console.error('Error loading data:', error));
+        
+        // Initialize and configure Chart.js line chart
+        const ctx = document.getElementById('downloadsChart').getContext('2d');
+        const downloadsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // Weeks go here
+                datasets: [] // Data for each extension goes here
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Weekly Downloads of DuckDB Community Extensions'
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
