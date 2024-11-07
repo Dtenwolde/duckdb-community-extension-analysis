@@ -1,0 +1,31 @@
+name: Update Weekly Data
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Runs every Sunday at midnight
+
+jobs:
+  update_data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: pip install pandas requests
+
+      - name: Run Update Script
+        run: python download_weekly.py
+
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "dljtw98@gmail.com"
+          git config --local user.name "Daniel ten Wolde"
+          git add compiled_download_metrics.csv
+          git commit -m "Update weekly download data"
+          git push

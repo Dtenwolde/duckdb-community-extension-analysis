@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DuckDB Extensions Weekly Downloads</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>DuckDB Community Extensions Weekly Downloads</h1>
+    <canvas id="downloadChart" width="800" height="400"></canvas>
+    <div id="extensionToggles"></div>
+
+    <script>
+        // Load data from CSV (you'll need to adapt this part if fetching dynamically)
+        fetch('compiled_download_metrics.csv')
+            .then(response => response.text())
+            .then(csvData => {
+                // Parse CSV data (use a library like PapaParse here for convenience)
+                const data = parseCSV(csvData);
+
+                // Initialize the chart
+                const ctx = document.getElementById('downloadChart').getContext('2d');
+                const chartData = processChartData(data);
+                const chart = new Chart(ctx, {
+                    type: 'line',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                onClick: toggleDataset
+                            }
+                        }
+                    }
+                });
+
+                // Add toggles for each extension
+                populateExtensionToggles(data, chart);
+            });
+
+        function parseCSV(csvData) {
+            // Implement CSV parsing here
+        }
+
+        function processChartData(data) {
+            // Process data to suit Chart.js format
+        }
+
+        function toggleDataset(event, legendItem, chart) {
+            const dataset = chart.data.datasets[legendItem.datasetIndex];
+            dataset.hidden = !dataset.hidden;
+            chart.update();
+        }
+
+        function populateExtensionToggles(data, chart) {
+            // Dynamically add toggles for each extension based on data
+        }
+    </script>
+</body>
+</html>
