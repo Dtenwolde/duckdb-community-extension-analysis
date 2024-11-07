@@ -5,57 +5,195 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DuckDB Extensions Weekly Downloads</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f8fafc;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            font-weight: 700;
+            color: #222; /* Dark gray */
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        /* Chart Container */
+        #chartContainer {
+            width: 100%;
+            max-width: 800px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 0 auto 20px auto;
+            padding: 10px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #downloadChart {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Toggle Buttons */
+        #extensionToggles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .toggle-label {
+            display: inline-block;
+            padding: 5px 12px;
+            border: 1px solid;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            color: #333;
+            transition: all 0.3s;
+        }
+
+        .toggle-label.active {
+            background-color: #e9ecef; /* Light gray for active */
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-label:hover {
+            background-color: #dfe3eb;
+        }
+    </style>
 </head>
 <body>
     <h1>DuckDB Community Extensions Weekly Downloads</h1>
-    <canvas id="downloadChart" width="800" height="400"></canvas>
+    <div id="chartContainer">
+        <canvas id="downloadChart"></canvas>
+    </div>
     <div id="extensionToggles"></div>
 
     <script>
-        // Load data from CSV (you'll need to adapt this part if fetching dynamically)
+        // Extension to color mapping
+        const extensionColorMap = {};
+
+        // Function to generate or get a consistent color for each extension
+        function getExtensionColor(extension) {
+            if (!extensionColorMap[extension]) {
+                extensionColorMap[extension] = getRandomColor();
+            }
+            return extensionColorMap[extension];
+        }
+
+        // Fetch and display data
         fetch('compiled_download_metrics.csv')
             .then(response => response.text())
             .then(csvData => {
-                // Parse CSV data (use a library like PapaParse here for convenience)
-                const data = parseCSV(csvData);
+                const parsedData = parseCSV(csvData);
+                const chartData = processChartData(parsedData);
 
                 // Initialize the chart
                 const ctx = document.getElementById('downloadChart').getContext('2d');
-                const chartData = processChartData(data);
                 const chart = new Chart(ctx, {
                     type: 'line',
                     data: chartData,
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                display: true,
-                                onClick: toggleDataset
+                                display: false
                             }
                         }
                     }
                 });
 
-                // Add toggles for each extension
-                populateExtensionToggles(data, chart);
+                // Populate custom toggles
+                populateExtensionToggles(parsedData, chart);
             });
 
+        // Function to parse CSV
         function parseCSV(csvData) {
-            // Implement CSV parsing here
+            const lines = csvData.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = lines.slice(1).map(line => {
+                const values = line.split(',');
+                const entry = {};
+                headers.forEach((header, index) => {
+                    entry[header] = values[index];
+                });
+                return entry;
+            });
+            return data;
         }
 
+        // Function to process chart data for Chart.js
         function processChartData(data) {
-            // Process data to suit Chart.js format
+            const labels = [...new Set(data.map(item => item._last_update))].sort();
+            const extensions = [...new Set(data.map(item => item.extension))];
+
+            const datasets = extensions.map(extension => {
+                const extensionData = data.filter(item => item.extension === extension);
+                return {
+                    label: extension,
+                    data: labels.map(date => {
+                        const record = extensionData.find(item => item._last_update === date);
+                        return record ? parseInt(record.downloads_last_week, 10) : 0;
+                    }),
+                    hidden: false,
+                    fill: false,
+                    borderColor: getExtensionColor(extension), // Consistent color for each extension
+                    tension: 0.1
+                };
+            });
+
+            return { labels, datasets };
         }
 
-        function toggleDataset(event, legendItem, chart) {
-            const dataset = chart.data.datasets[legendItem.datasetIndex];
-            dataset.hidden = !dataset.hidden;
-            chart.update();
+        // Function to get a random color for each dataset
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
         }
 
+        // Function to toggle dataset visibility
+        function toggleDataset(index, chart) {
+            const dataset = chart.data.datasets[index];
+            dataset.hidden = !dataset.hidden; // Toggle visibility
+            chart.update(); // Refresh chart
+        }
+
+        // Function to create custom toggles for each extension
         function populateExtensionToggles(data, chart) {
-            // Dynamically add toggles for each extension based on data
+            const uniqueExtensions = [...new Set(data.map(item => item.extension))];
+            const toggleContainer = document.getElementById('extensionToggles');
+
+            uniqueExtensions.forEach((extension, index) => {
+                const label = document.createElement('span');
+                label.classList.add('toggle-label', 'active'); // Start as active
+                label.style.borderColor = getExtensionColor(extension);
+                label.innerText = extension;
+
+                // Add click event to toggle dataset visibility
+                label.addEventListener('click', () => {
+                    toggleDataset(index, chart);
+                    label.classList.toggle('active'); // Update active state
+                });
+
+                toggleContainer.appendChild(label);
+            });
         }
     </script>
 </body>
