@@ -34,6 +34,13 @@ order by week_date desc
 limit 10;
 ```
 
+```sql selected_extension_data_cumulative
+select 
+        sum(downloads_last_week) as total_downloads
+from downloads
+where extension = '${inputs.selected_item.value}'
+```
+
 
 <div style="display: flex; align-items: center;">
   <div style="flex: 1;">
@@ -53,6 +60,13 @@ limit 10;
       comparison="growth_rate"
       comparisonFmt="pct1"
       comparisonTitle="vs. Last Week"
+    />
+  </div>
+    <div style="flex: 3;">
+    <BigValue 
+      data={selected_extension_data_cumulative} 
+      value="total_downloads"
+      fmt=num0
     />
   </div>
 </div>
