@@ -1,0 +1,5 @@
+# This file was automatically generated
+name: downloads
+type: duckdb
+options:
+  filename: download_data.duckdb

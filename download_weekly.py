@@ -2,7 +2,9 @@ import requests
 import pandas as pd
 from datetime import datetime
 import os
+import duckdb 
 
+conn = duckdb.connect("sources/download_data.duckdb")
 # Fetch this week's download data
 current_date = datetime.now()
 iso_year, iso_week, _ = current_date.isocalendar()
