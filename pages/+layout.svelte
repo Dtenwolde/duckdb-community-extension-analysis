@@ -5,6 +5,6 @@
 	export let data;
 </script>
 
-<EvidenceDefaultLayout {data} hideSidebar={true} githubRepo='https://github.com/Dtenwolde/duckdb-community-extension-analysis' neverShowQueries={true}>
+<EvidenceDefaultLayout {data} xProfile='https://x.com/DLJtenWolde' blueskyProfile='https://bsky.app/profile/dtenwolde.bsky.social' hideSidebar={true} githubRepo='https://github.com/Dtenwolde/duckdb-community-extension-analysis' neverShowQueries={true}>
 	<slot slot="content" />
 </EvidenceDefaultLayout>

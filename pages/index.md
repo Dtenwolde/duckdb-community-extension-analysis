@@ -1,11 +1,13 @@
 ---
 title: DuckDB community extension weekly downloads
-queries: 
- - all_downloads.sql
 ---
 
 
 # Weekly Downloads Overview
+
+```sql all_downloads
+select extension, downloads_last_week, week_number, sum(downloads_last_week) as total_downloads from downloads group by all order by total_downloads desc; 
+```
 
 <LineChart 
   data={all_downloads}
@@ -41,6 +43,20 @@ from downloads
 where extension = '${inputs.selected_item.value}'
 ```
 
+```sql selected_extension_monthly
+select 
+    date_trunc('month', _last_update)::DATE as month_date,
+    sum(downloads_last_week) as downloads_last_month,
+    (sum(downloads_last_week) - lag(sum(downloads_last_week)) over (order by date_trunc('month', _last_update))) / lag(sum(downloads_last_week)) over (order by date_trunc('month', _last_update)) as growth_rate
+from downloads
+where extension = '${inputs.selected_item.value}'
+group by date_trunc('month', _last_update)
+order by month_date desc
+limit 10;
+```
+
+
+
 
 <div style="display: flex; align-items: center;">
   <div style="flex: 1;">
@@ -62,7 +78,17 @@ where extension = '${inputs.selected_item.value}'
       comparisonTitle="vs. Last Week"
     />
   </div>
-    <div style="flex: 3;">
+  <div style="flex: 3;">
+    <BigValue 
+      data={selected_extension_monthly} 
+      value="downloads_last_month"
+      sparkline="month_date"
+      comparison="growth_rate"
+      comparisonFmt="pct1"
+      comparisonTitle="vs. Last Month"
+    />
+  </div>
+  <div style="flex: 4;">
     <BigValue 
       data={selected_extension_data_cumulative} 
       value="total_downloads"
