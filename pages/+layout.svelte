@@ -5,6 +5,6 @@
 	export let data;
 </script>
 
-<EvidenceDefaultLayout {data} hideSidebar={true} githubRepo='https://github.com/mehd-io/pypi-duck-flow' neverShowQueries={true}>
+<EvidenceDefaultLayout {data} hideSidebar={true} githubRepo='https://github.com/Dtenwolde/duckdb-community-extension-analysis' neverShowQueries={true}>
 	<slot slot="content" />
 </EvidenceDefaultLayout>
