@@ -1,8 +1,21 @@
 import duckdb
 import requests
 import yaml
+import os
+
 
 # DuckDB connection
+
+# Function to load the GitHub token from a secret file
+def load_github_token(file_path=".github_token"):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Token file not found: {file_path}")
+    with open(file_path, "r") as file:
+        return file.read().strip()
+
+
+# Load the GitHub token
+GITHUB_TOKEN = load_github_token()
 conn = duckdb.connect("sources/downloads/download_data.duckdb")
 
 # Fetch unique extensions
@@ -11,7 +24,9 @@ unique_extensions = conn.execute("SELECT DISTINCT extension FROM downloads").fet
 
 # Function to fetch GitHub stars
 def fetch_github_stars(repo_url, token=None):
-    headers = {}
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}"
+    }
     if token:
         headers["Authorization"] = f"token {token}"
 
@@ -24,8 +39,10 @@ def fetch_github_stars(repo_url, token=None):
         return None
 
 
-# Iterate over extensions and fetch stars
+# Initialize results
 results = []
+
+# Iterate over extensions and fetch description.yml details
 for extension in unique_extensions:
     extension_name = extension[0]
     description_file_url = f"https://raw.githubusercontent.com/duckdb/community-extensions/main/extensions/{extension_name}/description.yml"
@@ -35,28 +52,65 @@ for extension in unique_extensions:
         response = requests.get(description_file_url)
         if response.status_code == 200:
             description_data = yaml.safe_load(response.text)
+
+            # Extract fields from description.yml
             github_repo = description_data.get("repo", {}).get("github")
             extended_description = description_data.get("docs", {}).get("extended_description")
+            hello_world = description_data.get("docs", {}).get("hello_world")
+            version = description_data.get("extension", {}).get("version")
+            description = description_data.get("extension", {}).get("description")
+            build = description_data.get("extension", {}).get("build")
+            language = description_data.get("extension", {}).get("language")
+            license_type = description_data.get("extension", {}).get("license")
+            maintainers = ", ".join(description_data.get("extension", {}).get("maintainers", []))
+            excluded_platforms = description_data.get("extension", {}).get("excluded_platforms", "")
+            requires_toolchains = description_data.get("extension", {}).get("requires_toolchains", "")
+            ref = description_data.get("repo", {}).get("ref", "")
 
+            # Fetch GitHub star count
+            star_count = None
             if github_repo:
                 repo_url = f"https://api.github.com/repos/{github_repo}"
-                star_count = fetch_github_stars(repo_url,
-                                                token=None)  # Replace `None` with your GitHub token if available
+                star_count = fetch_github_stars(repo_url, token=None)
 
-                if star_count is not None:
-                    results.append((extension_name, github_repo, star_count, extended_description))
-                    print(f"{extension_name}: {star_count} stars")
-            else:
-                print(f"No GitHub repo found for extension {extension_name}")
+            # Append all the extracted data
+            results.append((
+                extension_name, github_repo, star_count, extended_description, hello_world,
+                version, description, build, language, license_type,
+                maintainers, excluded_platforms, requires_toolchains, ref
+            ))
+            print(f"Processed {extension_name}: {star_count} stars")
         else:
             print(f"Failed to fetch description.yml for {extension_name}: {response.status_code}")
     except Exception as e:
         print(f"Error processing extension {extension_name}: {e}")
 
-# Optionally, store results in DuckDB
-df = conn.execute("CREATE TABLE IF NOT EXISTS github_stars (extension TEXT, repo_url TEXT, star_count INTEGER, extended_description TEXT)")
+# Create or update the DuckDB table
+conn.execute("""
+    CREATE TABLE IF NOT EXISTS extension_details (
+        extension TEXT,
+        repo_url TEXT,
+        star_count INTEGER,
+        extended_description TEXT,
+        hello_world TEXT,
+        version TEXT,
+        description TEXT,
+        build TEXT,
+        language TEXT,
+        license TEXT,
+        maintainers TEXT,
+        excluded_platforms TEXT,
+        requires_toolchains TEXT,
+        ref TEXT
+    )
+""")
+
+# Insert data into the DuckDB table
 conn.executemany(
-    "INSERT INTO github_stars VALUES (?, ?, ?, ?)",
+    """
+    INSERT INTO extension_details VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """,
     results
 )
-print("Star counts have been stored in the database.")
+
+print("All extension details have been stored in the database.")

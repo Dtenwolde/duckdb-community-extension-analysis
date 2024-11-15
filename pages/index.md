@@ -162,15 +162,14 @@ order by month_date desc
 limit 10;
 ```
 
-```sql github_stars
-select repo_url, star_count from github_stars where extension = '${inputs.selected_item.value}'
+```sql extension_details
+select * from extension_details where extension = '${inputs.selected_item.value}'
 ```
 
 
-<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start;">
-  <!-- Left Column -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
   <div>
-    <!-- Dropdown for Extension Selection -->
+    <!-- Dropdown for selecting extensions -->
     <Dropdown
         name=selected_item
         data={unique_extensions}
@@ -178,53 +177,65 @@ select repo_url, star_count from github_stars where extension = '${inputs.select
         title="Select an Extension"
         defaultValue="duckpgq"
     />
+    
+    <!-- BigValue Stats -->
+    <BigValue 
+      data={selected_extension_data} 
+      value="last_week_downloads"
+      sparkline="week_date"
+      comparison="growth_rate"
+      comparisonFmt="pct1"
+      comparisonTitle="vs. Last Week"
+    />
+    <BigValue 
+      data={selected_extension_monthly} 
+      value="downloads_last_month"
+      sparkline="month_date"
+      comparison="growth_rate"
+      comparisonFmt="pct1"
+      comparisonTitle="vs. Last Month"
+    />
+    <BigValue 
+      data={selected_extension_data_cumulative} 
+      value="total_downloads"
+      fmt=num0
+    />
 
-    <!-- Metrics Section -->
-    <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 20px;">
-      <BigValue 
-        data={selected_extension_data} 
-        value="last_week_downloads"
-        sparkline="week_date"
-        comparison="growth_rate"
-        comparisonFmt="pct1"
-        comparisonTitle="vs. Last Week"
-        title="Weekly Downloads"
-      />
-      <BigValue 
-        data={selected_extension_monthly} 
-        value="downloads_last_month"
-        sparkline="month_date"
-        comparison="growth_rate"
-        comparisonFmt="pct1"
-        comparisonTitle="vs. Last Month"
-        title="Monthly Downloads"
-      />
-      <BigValue 
-        data={selected_extension_data_cumulative} 
-        value="total_downloads"
-        fmt=num0
-        title="Total Downloads"
-      />
-    </div>
-
-    <!-- GitHub Information -->
+    <!-- GitHub Stats -->
     <div style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
       <div style="display: flex; align-items: center; gap: 10px;">
-        <!-- GitHub Icon and Link -->
         <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" width="20" height="20" />
-        <a href="https://github.com/{github_stars[0].repo_url}" target="_blank">View on GitHub</a>
+        <a href="https://github.com/{extension_details[0].repo_url}" target="_blank">View on GitHub</a>
       </div>
-      <!-- Using Material Icons -->
-        <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-          <img src="https://fonts.gstatic.com/s/i/materialicons/star/v9/24px.svg" alt="Stars" width="20" height="20" />
-          <span>Stars: <strong>{github_stars[0].star_count}</strong></span>
-        </div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+        <img src="https://fonts.gstatic.com/s/i/materialicons/star/v9/24px.svg" alt="Stars" width="20" height="20" />
+        <span>Stars: <strong>{extension_details[0].star_count}</strong></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+        <img src="https://fonts.gstatic.com/s/i/materialicons/update/v6/24px.svg" alt="Version" width="20" height="20" />
+        <span>Version: <strong>{extension_details[0].version}</strong></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+        <img src="https://fonts.gstatic.com/s/i/materialicons/build/v8/24px.svg" alt="Build" width="20" height="20" />
+        <span>Build: <strong>{extension_details[0].build}</strong></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+        <img src="https://fonts.gstatic.com/s/i/materialicons/code/v8/24px.svg" alt="Language" width="20" height="20" />
+        <span>Language: <strong>{extension_details[0].language}</strong></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+        <img src="https://fonts.gstatic.com/s/i/materialicons/group/v8/24px.svg" alt="Maintainers" width="20" height="20" />
+        <span>Maintainers: <strong>{extension_details[0].maintainers}</strong></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+        <img src="https://fonts.gstatic.com/s/i/materialicons/close/v8/24px.svg" alt="Excluded Platforms" width="20" height="20" />
+        <span>Excluded Platforms: <strong>{extension_details[0].excluded_platforms || 'None'}</strong></span>
+      </div>
     </div>
-  </div>
+</div>
 
-  <!-- Right Column -->
+  <!-- Right: Line Chart and Description -->
   <div>
-    <!-- Weekly Downloads Chart -->
     <LineChart
       data={downloads_by_week}
       x=week
@@ -232,10 +243,16 @@ select repo_url, star_count from github_stars where extension = '${inputs.select
       yAxisTitle="Downloads per Week"
       title="Weekly Downloads for Selected Extension"
     />
+
+    <!-- Extended Description -->
+    ## Description
+    {extension_details[0].extended_description}
+    
   </div>
 </div>
 
-## Weekly Downloads for Selected Extension
+
+[//]: # (## Weekly Downloads for Selected Extension)
 
 ```sql downloads_by_week
 select week_number as week, downloads_last_week as downloads
