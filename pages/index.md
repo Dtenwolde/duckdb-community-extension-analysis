@@ -8,14 +8,121 @@ title: DuckDB community extension weekly downloads
 ```sql all_downloads
 select extension, downloads_last_week, week_number, sum(downloads_last_week) as total_downloads from downloads group by all order by total_downloads desc; 
 ```
+```sql ordered_data
+WITH extension_totals AS (
+    SELECT 
+        extension,
+        SUM(downloads_last_week) AS total_downloads
+    FROM downloads
+    GROUP BY extension
+    ORDER BY total_downloads DESC
+    LIMIT '${inputs.chart_top_or_all}'
+)
+SELECT 
+    d.week_number,
+    d.extension,
+    d.downloads_last_week
+FROM downloads d
+JOIN extension_totals et ON d.extension = et.extension
+ORDER BY et.total_downloads DESC, d.week_number;
+```
 
-<LineChart 
-  data={all_downloads}
-  x=week_number
-  y=downloads_last_week 
-  yAxisTitle="Downloads per Week"
-  series=extension
-/>
+```sql weekly_downloads_for_all
+WITH weekly_downloads AS (
+    SELECT 
+        _last_update::DATE AS week_date,
+        SUM(downloads_last_week) AS last_week_downloads
+    FROM downloads
+    GROUP BY _last_update::DATE
+    ORDER BY week_date
+),
+growth_data AS (
+    SELECT 
+        week_date,
+        last_week_downloads,
+        (last_week_downloads - LAG(last_week_downloads) OVER (ORDER BY week_date)) 
+            / LAG(last_week_downloads) OVER (ORDER BY week_date) AS growth_rate
+    FROM weekly_downloads
+)
+SELECT 
+    week_date,
+    last_week_downloads,
+    growth_rate
+FROM growth_data
+ORDER BY week_date DESC
+LIMIT 10;
+```
+
+```sql monthly_downloads_for_all
+WITH monthly_downloads AS (
+    SELECT 
+        DATE_TRUNC('month', _last_update)::DATE AS month_date,
+        SUM(downloads_last_week) AS total_monthly_downloads
+    FROM downloads
+    GROUP BY month_date
+    ORDER BY month_date
+),
+growth_data AS (
+    SELECT 
+        month_date,
+        total_monthly_downloads,
+        (total_monthly_downloads - LAG(total_monthly_downloads) OVER (ORDER BY month_date)) 
+            / LAG(total_monthly_downloads) OVER (ORDER BY month_date) AS growth_rate
+    FROM monthly_downloads
+)
+SELECT 
+    month_date,
+    total_monthly_downloads,
+    growth_rate
+FROM growth_data
+ORDER BY month_date DESC
+LIMIT 10;
+```
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+  <!-- Left Column: BigValues -->
+  <div style="display: flex; flex-direction: column; gap: 20px;">
+    <BigValue 
+      data={weekly_downloads_for_all} 
+      value="last_week_downloads"
+      sparkline="week_date"
+      fmt=num0
+      comparison="growth_rate"
+      comparisonFmt="pct1"
+      comparisonTitle="vs. Last Week"
+      title="Total Weekly Downloads"
+    />
+    <BigValue 
+      data={monthly_downloads_for_all} 
+      value="total_monthly_downloads"
+      sparkline="month_date"
+      fmt=num0
+      comparison="growth_rate"
+      comparisonFmt="pct1"
+      comparisonTitle="vs. Last Month"
+      title="Total Monthly Downloads"
+    />
+    <LastRefreshed/>
+  </div>
+
+  <!-- Right Column: LineChart and ButtonGroup -->
+  <div style="position: relative;">
+    <div style="position: absolute; top: 10px; right: 10px; z-index: 10; background-color: white; padding: 5px; border-radius: 5px;">
+      <ButtonGroup name=chart_top_or_all defaultValue=5>
+          <ButtonGroupItem valueLabel="Top 5" defaultValue=5 value=5 />
+          <ButtonGroupItem valueLabel="All" value=1000 />
+      </ButtonGroup>
+    </div>
+    <LineChart
+      data={ordered_data}
+      x=week_number
+      y=downloads_last_week
+      series=extension
+      yAxisTitle="Downloads per Week"
+      title="Weekly Downloads per Extension"
+    />
+  </div>
+</div>
 
 ## Extension Details
 
@@ -54,9 +161,6 @@ group by date_trunc('month', _last_update)
 order by month_date desc
 limit 10;
 ```
-
-
-
 
 <div style="display: flex; align-items: center;">
   <div style="flex: 1;">
@@ -111,26 +215,46 @@ where extension = '${inputs.selected_item.value}'
     y=downloads
 />
 
-## Top Extensions by Weekly Downloads
+[//]: # (## Top Extensions by Weekly Downloads)
 
-```sql top_extensions
-select week_number, extension, downloads_last_week as downloads
-from downloads
-where extension in (
-    select extension
-    from downloads
-    group by extension
-    order by sum(downloads_last_week) desc
-    limit 5
-)
-order by week_number, extension
-```
+[//]: # ()
+[//]: # (```sql top_extensions)
 
-<AreaChart
-    data={top_extensions}
-    x=week_number
-    y=downloads
-    yAxisTitle="Downloads per Week"
-    series=extension
-    stacked={true}
-/>
+[//]: # (select week_number, extension, downloads_last_week as downloads)
+
+[//]: # (from downloads)
+
+[//]: # (where extension in &#40;)
+
+[//]: # (    select extension)
+
+[//]: # (    from downloads)
+
+[//]: # (    group by extension)
+
+[//]: # (    order by sum&#40;downloads_last_week&#41; desc)
+
+[//]: # (    limit 5)
+
+[//]: # (&#41;)
+
+[//]: # (order by week_number, extension)
+
+[//]: # (```)
+
+[//]: # ()
+[//]: # (<AreaChart)
+
+[//]: # (    data={top_extensions})
+
+[//]: # (    x=week_number)
+
+[//]: # (    y=downloads)
+
+[//]: # (    yAxisTitle="Downloads per Week")
+
+[//]: # (    series=extension)
+
+[//]: # (    stacked={true})
+
+[//]: # (/>)

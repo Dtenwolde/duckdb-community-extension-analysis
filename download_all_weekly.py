@@ -2,7 +2,6 @@ import requests
 import pandas as pd
 from datetime import datetime, timedelta
 
-
 # Define the start and end dates
 start_date = datetime(2024, 10, 1)
 end_date = datetime.now()
@@ -10,7 +9,6 @@ end_date = datetime.now()
 # Initialize an empty DataFrame to store the compiled data
 compiled_data = pd.DataFrame()
 
-conn = duckdb.connect("sources/download_data.duckdb")
 # Iterate over each week in the date range
 current_date = start_date
 while current_date <= end_date:
