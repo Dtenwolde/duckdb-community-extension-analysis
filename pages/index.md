@@ -162,41 +162,75 @@ order by month_date desc
 limit 10;
 ```
 
-<div style="display: flex; align-items: center;">
-  <div style="flex: 1;">
+```sql github_stars
+select repo_url, star_count from github_stars where extension = '${inputs.selected_item.value}'
+```
+
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start;">
+  <!-- Left Column -->
+  <div>
+    <!-- Dropdown for Extension Selection -->
     <Dropdown
         name=selected_item
         data={unique_extensions}
         value=extension
-        title="Select an extension"
+        title="Select an Extension"
         defaultValue="duckpgq"
     />
+
+    <!-- Metrics Section -->
+    <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 20px;">
+      <BigValue 
+        data={selected_extension_data} 
+        value="last_week_downloads"
+        sparkline="week_date"
+        comparison="growth_rate"
+        comparisonFmt="pct1"
+        comparisonTitle="vs. Last Week"
+        title="Weekly Downloads"
+      />
+      <BigValue 
+        data={selected_extension_monthly} 
+        value="downloads_last_month"
+        sparkline="month_date"
+        comparison="growth_rate"
+        comparisonFmt="pct1"
+        comparisonTitle="vs. Last Month"
+        title="Monthly Downloads"
+      />
+      <BigValue 
+        data={selected_extension_data_cumulative} 
+        value="total_downloads"
+        fmt=num0
+        title="Total Downloads"
+      />
+    </div>
+
+    <!-- GitHub Information -->
+    <div style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <!-- GitHub Icon and Link -->
+        <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" width="20" height="20" />
+        <a href="https://github.com/{github_stars[0].repo_url}" target="_blank">View on GitHub</a>
+      </div>
+      <!-- Using Material Icons -->
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+          <img src="https://fonts.gstatic.com/s/i/materialicons/star/v9/24px.svg" alt="Stars" width="20" height="20" />
+          <span>Stars: <strong>{github_stars[0].star_count}</strong></span>
+        </div>
+    </div>
   </div>
-  <div style="flex: 2;">
-    <BigValue 
-      data={selected_extension_data} 
-      value="last_week_downloads"
-      sparkline="week_date"
-      comparison="growth_rate"
-      comparisonFmt="pct1"
-      comparisonTitle="vs. Last Week"
-    />
-  </div>
-  <div style="flex: 3;">
-    <BigValue 
-      data={selected_extension_monthly} 
-      value="downloads_last_month"
-      sparkline="month_date"
-      comparison="growth_rate"
-      comparisonFmt="pct1"
-      comparisonTitle="vs. Last Month"
-    />
-  </div>
-  <div style="flex: 4;">
-    <BigValue 
-      data={selected_extension_data_cumulative} 
-      value="total_downloads"
-      fmt=num0
+
+  <!-- Right Column -->
+  <div>
+    <!-- Weekly Downloads Chart -->
+    <LineChart
+      data={downloads_by_week}
+      x=week
+      y=downloads
+      yAxisTitle="Downloads per Week"
+      title="Weekly Downloads for Selected Extension"
     />
   </div>
 </div>
@@ -209,11 +243,15 @@ from downloads
 where extension = '${inputs.selected_item.value}'
 ```
 
-<BarChart
-    data={downloads_by_week}
-    x=week
-    y=downloads
-/>
+[//]: # (<BarChart)
+
+[//]: # (    data={downloads_by_week})
+
+[//]: # (    x=week)
+
+[//]: # (    y=downloads)
+
+[//]: # (/>)
 
 [//]: # (## Top Extensions by Weekly Downloads)
 

@@ -36,6 +36,7 @@ for extension in unique_extensions:
         if response.status_code == 200:
             description_data = yaml.safe_load(response.text)
             github_repo = description_data.get("repo", {}).get("github")
+            extended_description = description_data.get("docs", {}).get("extended_description")
 
             if github_repo:
                 repo_url = f"https://api.github.com/repos/{github_repo}"
@@ -43,7 +44,7 @@ for extension in unique_extensions:
                                                 token=None)  # Replace `None` with your GitHub token if available
 
                 if star_count is not None:
-                    results.append((extension_name, github_repo, star_count))
+                    results.append((extension_name, github_repo, star_count, extended_description))
                     print(f"{extension_name}: {star_count} stars")
             else:
                 print(f"No GitHub repo found for extension {extension_name}")
@@ -53,9 +54,9 @@ for extension in unique_extensions:
         print(f"Error processing extension {extension_name}: {e}")
 
 # Optionally, store results in DuckDB
-df = conn.execute("CREATE TABLE IF NOT EXISTS github_stars (extension TEXT, repo_url TEXT, star_count INTEGER)")
+df = conn.execute("CREATE TABLE IF NOT EXISTS github_stars (extension TEXT, repo_url TEXT, star_count INTEGER, extended_description TEXT)")
 conn.executemany(
-    "INSERT INTO github_stars VALUES (?, ?, ?)",
+    "INSERT INTO github_stars VALUES (?, ?, ?, ?)",
     results
 )
 print("Star counts have been stored in the database.")
