@@ -2,9 +2,8 @@ import duckdb
 import requests
 import yaml
 import os
+from markdown import markdown  # Import the markdown library for conversion
 
-
-# DuckDB connection
 
 # Function to load the GitHub token from a secret file
 def load_github_token(file_path=".github_token"):
@@ -63,9 +62,15 @@ for extension in unique_extensions:
             language = description_data.get("extension", {}).get("language")
             license_type = description_data.get("extension", {}).get("license")
             maintainers = ", ".join(description_data.get("extension", {}).get("maintainers", []))
-            excluded_platforms = description_data.get("extension", {}).get("excluded_platforms", "")
+            excluded_platforms_raw = description_data.get("extension", {}).get("excluded_platforms", "")
+            excluded_platforms = "\n".join([f"- {platform.strip()}" for platform in excluded_platforms_raw.split(";")]) if excluded_platforms_raw else "- None"
+            excluded_platforms_html = markdown(excluded_platforms) if excluded_platforms else None
             requires_toolchains = description_data.get("extension", {}).get("requires_toolchains", "")
             ref = description_data.get("repo", {}).get("ref", "")
+
+            # Convert Markdown to HTML
+            extended_description_html = markdown(extended_description) if extended_description else None
+            hello_world_html = markdown(hello_world) if hello_world else None
 
             # Fetch GitHub star count
             star_count = None
@@ -75,9 +80,9 @@ for extension in unique_extensions:
 
             # Append all the extracted data
             results.append((
-                extension_name, github_repo, star_count, extended_description, hello_world,
-                version, description, build, language, license_type,
-                maintainers, excluded_platforms, requires_toolchains, ref
+                extension_name, github_repo, star_count, extended_description, extended_description_html,
+                hello_world, hello_world_html, version, description, build, language, license_type,
+                maintainers, excluded_platforms, excluded_platforms_html, requires_toolchains, ref
             ))
             print(f"Processed {extension_name}: {star_count} stars")
         else:
@@ -92,7 +97,9 @@ conn.execute("""
         repo_url TEXT,
         star_count INTEGER,
         extended_description TEXT,
+        extended_description_html TEXT,
         hello_world TEXT,
+        hello_world_html TEXT,
         version TEXT,
         description TEXT,
         build TEXT,
@@ -100,6 +107,7 @@ conn.execute("""
         license TEXT,
         maintainers TEXT,
         excluded_platforms TEXT,
+        excluded_platforms_html TEXT,
         requires_toolchains TEXT,
         ref TEXT
     )
@@ -108,7 +116,7 @@ conn.execute("""
 # Insert data into the DuckDB table
 conn.executemany(
     """
-    INSERT INTO extension_details VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO extension_details VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
     results
 )

@@ -167,7 +167,8 @@ select * from extension_details where extension = '${inputs.selected_item.value}
 ```
 
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
+  <!-- Left: Stats and Links -->
   <div>
     <!-- Dropdown for selecting extensions -->
     <Dropdown
@@ -177,37 +178,48 @@ select * from extension_details where extension = '${inputs.selected_item.value}
         title="Select an Extension"
         defaultValue="duckpgq"
     />
-    
-    <!-- BigValue Stats -->
-    <BigValue 
-      data={selected_extension_data} 
-      value="last_week_downloads"
-      sparkline="week_date"
-      comparison="growth_rate"
-      comparisonFmt="pct1"
-      comparisonTitle="vs. Last Week"
-    />
-    <BigValue 
-      data={selected_extension_monthly} 
-      value="downloads_last_month"
-      sparkline="month_date"
-      comparison="growth_rate"
-      comparisonFmt="pct1"
-      comparisonTitle="vs. Last Month"
-    />
-    <BigValue 
-      data={selected_extension_data_cumulative} 
-      value="total_downloads"
-      fmt=num0
-    />
 
-    <!-- GitHub Stats -->
-    <div style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+    <!-- BigValue Stats -->
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      <BigValue 
+        data={selected_extension_data} 
+        value="last_week_downloads"
+        sparkline="week_date"
+        comparison="growth_rate"
+        comparisonFmt="pct1"
+        comparisonTitle="vs. Last Week"
+      />
+      <BigValue 
+        data={selected_extension_monthly} 
+        value="downloads_last_month"
+        sparkline="month_date"
+        comparison="growth_rate"
+        comparisonFmt="pct1"
+        comparisonTitle="vs. Last Month"
+      />
+      <BigValue 
+        data={selected_extension_data_cumulative} 
+        value="total_downloads"
+        fmt=num0
+      />
+    </div>
+
+    <!-- Links and Metadata -->
+    <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+      <!-- GitHub Link -->
       <div style="display: flex; align-items: center; gap: 10px;">
         <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" width="20" height="20" />
         <a href="https://github.com/{extension_details[0].repo_url}" target="_blank">View on GitHub</a>
       </div>
-      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+
+      <!-- Community Link -->
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
+        <img src="https://fonts.gstatic.com/s/i/materialicons/group/v8/24px.svg" alt="Community" width="20" height="20" />
+        <a href={`https://community-extensions.duckdb.org/extensions/${inputs.selected_item.value}.html`} target="_blank">View on Community Page</a>
+      </div>
+
+      <!-- Metadata -->
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
         <img src="https://fonts.gstatic.com/s/i/materialicons/star/v9/24px.svg" alt="Stars" width="20" height="20" />
         <span>Stars: <strong>{extension_details[0].star_count}</strong></span>
       </div>
@@ -227,12 +239,12 @@ select * from extension_details where extension = '${inputs.selected_item.value}
         <img src="https://fonts.gstatic.com/s/i/materialicons/group/v8/24px.svg" alt="Maintainers" width="20" height="20" />
         <span>Maintainers: <strong>{extension_details[0].maintainers}</strong></span>
       </div>
-      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-        <img src="https://fonts.gstatic.com/s/i/materialicons/close/v8/24px.svg" alt="Excluded Platforms" width="20" height="20" />
-        <span>Excluded Platforms: <strong>{extension_details[0].excluded_platforms || 'None'}</strong></span>
+      <div style="display: flex; flex-direction: column; margin-top: 10px;">
+        <span><strong>Excluded Platforms:</strong></span>
+        <div style="margin-left: 20px;">{@html extension_details[0].excluded_platforms_html}</div>
       </div>
     </div>
-</div>
+  </div>
 
   <!-- Right: Line Chart and Description -->
   <div>
@@ -241,16 +253,16 @@ select * from extension_details where extension = '${inputs.selected_item.value}
       x=week
       y=downloads
       yAxisTitle="Downloads per Week"
-      title="Weekly Downloads for Selected Extension"
+      title="Weekly Downloads for {inputs.selected_item.value}"
     />
 
     <!-- Extended Description -->
-    ## Description
-    {extension_details[0].extended_description}
-    
+    <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+      <h2>Description</h2>
+      {@html extension_details[0].extended_description_html}
+    </div>
   </div>
 </div>
-
 
 [//]: # (## Weekly Downloads for Selected Extension)
 
