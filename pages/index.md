@@ -78,10 +78,9 @@ FROM growth_data
 ORDER BY month_date DESC
 LIMIT 10;
 ```
-
-<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+<Grid cols="2" gap="20px">
   <!-- Left Column: BigValues -->
-  <div style="display: flex; flex-direction: column; gap: 20px;">
+  <Grid cols="1" gap="20px">
     <BigValue 
       data={weekly_downloads_for_all} 
       value="last_week_downloads"
@@ -102,27 +101,27 @@ LIMIT 10;
       comparisonTitle="vs. Last Month"
       title="Total Monthly Downloads"
     />
-    <LastRefreshed/>
-  </div>
+    <LastRefreshed />
+  </Grid>
 
   <!-- Right Column: LineChart and ButtonGroup -->
   <div style="position: relative;">
     <div style="position: absolute; top: 10px; right: 10px; z-index: 10; background-color: white; padding: 5px; border-radius: 5px;">
-      <ButtonGroup name=chart_top_or_all defaultValue=5>
-          <ButtonGroupItem valueLabel="Top 5" defaultValue=5 value=5 />
-          <ButtonGroupItem valueLabel="All" value=1000 />
+      <ButtonGroup name="chart_top_or_all" defaultValue="5">
+        <ButtonGroupItem valueLabel="Top 5" value="5" />
+        <ButtonGroupItem valueLabel="All" value="1000" />
       </ButtonGroup>
     </div>
     <LineChart
       data={ordered_data}
-      x=week_number
-      y=downloads_last_week
-      series=extension
+      x="week_number"
+      y="downloads_last_week"
+      series="extension"
       yAxisTitle="Downloads per Week"
       title="Weekly Downloads per Extension"
     />
   </div>
-</div>
+</Grid>
 
 ## Extension Details
 
@@ -167,8 +166,8 @@ select * from extension_details where extension = '${inputs.selected_item.value}
 ```
 
 
-<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
-  <!-- Left: Stats and Links -->
+<Grid cols="2" gap="30px">
+  <!-- Left Column: Metadata and Links -->
   <div>
     <!-- Dropdown for selecting extensions -->
     <Dropdown
@@ -180,73 +179,82 @@ select * from extension_details where extension = '${inputs.selected_item.value}
     />
 
     <!-- BigValue Stats -->
-    <div style="display: flex; flex-direction: column; gap: 15px;">
+    <Grid cols="1" gap="15px" style="margin-top: 15px;">
       <BigValue 
         data={selected_extension_data} 
         value="last_week_downloads"
         sparkline="week_date"
+        fmt=num0
         comparison="growth_rate"
         comparisonFmt="pct1"
         comparisonTitle="vs. Last Week"
+        title="Total Weekly Downloads"
       />
       <BigValue 
         data={selected_extension_monthly} 
         value="downloads_last_month"
         sparkline="month_date"
+        fmt=num0
         comparison="growth_rate"
         comparisonFmt="pct1"
         comparisonTitle="vs. Last Month"
+        title="Total Monthly Downloads"
       />
-      <BigValue 
-        data={selected_extension_data_cumulative} 
-        value="total_downloads"
-        fmt=num0
-      />
+
+       <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+      <!-- Links and Metadata -->
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- GitHub Link -->
+        <div style="display: flex; align-items: center;">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" width="16" height="16" />
+          <a href="https://github.com/{extension_details[0].repo_url}" target="_blank" style="margin-left: 8px;">View on GitHub</a>
+        </div>
+
+        <!-- Community Page Link -->
+        <div style="display: flex; align-items: center;">
+          <img src="https://fonts.gstatic.com/s/i/materialicons/group/v8/24px.svg" alt="Community" width="16" height="16" />
+          <a href={`https://duckdb.org/community_extensions/extensions/${inputs.selected_item.value}.html`} target="_blank" style="margin-left: 8px;">View on Community Page</a>
+        </div>
+
+        <!-- Stars -->
+        <div style="display: flex; align-items: center;">
+          <img src="https://fonts.gstatic.com/s/i/materialicons/star/v9/24px.svg" alt="Stars" width="16" height="16" />
+          <span style="margin-left: 8px;">Stars: <strong>{extension_details[0].star_count}</strong></span>
+        </div>
+
+        <!-- Version -->
+        <div style="display: flex; align-items: center;">
+          <img src="https://fonts.gstatic.com/s/i/materialicons/update/v6/24px.svg" alt="Version" width="16" height="16" />
+          <span style="margin-left: 8px;">Version: <strong>{extension_details[0].version}</strong></span>
+        </div>
+
+        <!-- Build -->
+        <div style="display: flex; align-items: center;">
+          <img src="https://fonts.gstatic.com/s/i/materialicons/build/v8/24px.svg" alt="Build" width="16" height="16" />
+          <span style="margin-left: 8px;">Build: <strong>{extension_details[0].build}</strong></span>
+        </div>
+
+        <!-- Language -->
+        <div style="display: flex; align-items: center;">
+          <img src="https://fonts.gstatic.com/s/i/materialicons/code/v8/24px.svg" alt="Language" width="16" height="16" />
+          <span style="margin-left: 8px;">Language: <strong>{extension_details[0].language}</strong></span>
+        </div>
+
+        <!-- Maintainers -->
+        <div style="display: flex; align-items: center;">
+          <img src="https://fonts.gstatic.com/s/i/materialicons/group/v8/24px.svg" alt="Maintainers" width="16" height="16" />
+          <span style="margin-left: 8px;">Maintainers: <strong>{extension_details[0].maintainers}</strong></span>
+        </div>
+
+        <!-- Excluded Platforms -->
+        <div style="display: flex; flex-direction: column;">
+          <span><strong>Excluded Platforms:</strong></span>
+          <div style="margin-left: 20px;">{@html extension_details[0].excluded_platforms_html}</div>
+        </div>
     </div>
-
-    <!-- Links and Metadata -->
-    <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
-      <!-- GitHub Link -->
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" width="20" height="20" />
-        <a href="https://github.com/{extension_details[0].repo_url}" target="_blank">View on GitHub</a>
-      </div>
-
-      <!-- Community Link -->
-      <div style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
-        <img src="https://fonts.gstatic.com/s/i/materialicons/group/v8/24px.svg" alt="Community" width="20" height="20" />
-        <a href={`https://community-extensions.duckdb.org/extensions/${inputs.selected_item.value}.html`} target="_blank">View on Community Page</a>
-      </div>
-
-      <!-- Metadata -->
-      <div style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
-        <img src="https://fonts.gstatic.com/s/i/materialicons/star/v9/24px.svg" alt="Stars" width="20" height="20" />
-        <span>Stars: <strong>{extension_details[0].star_count}</strong></span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-        <img src="https://fonts.gstatic.com/s/i/materialicons/update/v6/24px.svg" alt="Version" width="20" height="20" />
-        <span>Version: <strong>{extension_details[0].version}</strong></span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-        <img src="https://fonts.gstatic.com/s/i/materialicons/build/v8/24px.svg" alt="Build" width="20" height="20" />
-        <span>Build: <strong>{extension_details[0].build}</strong></span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-        <img src="https://fonts.gstatic.com/s/i/materialicons/code/v8/24px.svg" alt="Language" width="20" height="20" />
-        <span>Language: <strong>{extension_details[0].language}</strong></span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-        <img src="https://fonts.gstatic.com/s/i/materialicons/group/v8/24px.svg" alt="Maintainers" width="20" height="20" />
-        <span>Maintainers: <strong>{extension_details[0].maintainers}</strong></span>
-      </div>
-      <div style="display: flex; flex-direction: column; margin-top: 10px;">
-        <span><strong>Excluded Platforms:</strong></span>
-        <div style="margin-left: 20px;">{@html extension_details[0].excluded_platforms_html}</div>
-      </div>
+    </Grid>
     </div>
-  </div>
-
-  <!-- Right: Line Chart and Description -->
+  <!-- Right Column: Line Chart and Description -->
   <div>
     <LineChart
       data={downloads_by_week}
@@ -262,7 +270,7 @@ select * from extension_details where extension = '${inputs.selected_item.value}
       {@html extension_details[0].extended_description_html}
     </div>
   </div>
-</div>
+</Grid>
 
 [//]: # (## Weekly Downloads for Selected Extension)
 
@@ -271,57 +279,3 @@ select week_number as week, downloads_last_week as downloads
 from downloads
 where extension = '${inputs.selected_item.value}'
 ```
-
-[//]: # (<BarChart)
-
-[//]: # (    data={downloads_by_week})
-
-[//]: # (    x=week)
-
-[//]: # (    y=downloads)
-
-[//]: # (/>)
-
-[//]: # (## Top Extensions by Weekly Downloads)
-
-[//]: # ()
-[//]: # (```sql top_extensions)
-
-[//]: # (select week_number, extension, downloads_last_week as downloads)
-
-[//]: # (from downloads)
-
-[//]: # (where extension in &#40;)
-
-[//]: # (    select extension)
-
-[//]: # (    from downloads)
-
-[//]: # (    group by extension)
-
-[//]: # (    order by sum&#40;downloads_last_week&#41; desc)
-
-[//]: # (    limit 5)
-
-[//]: # (&#41;)
-
-[//]: # (order by week_number, extension)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (<AreaChart)
-
-[//]: # (    data={top_extensions})
-
-[//]: # (    x=week_number)
-
-[//]: # (    y=downloads)
-
-[//]: # (    yAxisTitle="Downloads per Week")
-
-[//]: # (    series=extension)
-
-[//]: # (    stacked={true})
-
-[//]: # (/>)
