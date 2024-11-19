@@ -93,7 +93,7 @@ for extension in unique_extensions:
 # Create or update the DuckDB table
 conn.execute("""
     CREATE TABLE IF NOT EXISTS extension_details (
-        extension TEXT,
+        extension TEXT PRIMARY KEY,
         repo_url TEXT,
         star_count INTEGER,
         extended_description TEXT,
@@ -116,7 +116,7 @@ conn.execute("""
 # Insert data into the DuckDB table
 conn.executemany(
     """
-    INSERT INTO extension_details VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO extension_details VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
     results
 )

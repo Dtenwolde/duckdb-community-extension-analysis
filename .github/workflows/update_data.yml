@@ -23,6 +23,9 @@ jobs:
       - name: Run Update Script
         run: python download_weekly.py
 
+      - name: Run Github stars script
+        run: python get_github_stars.py
+
       - name: Commit and Push Changes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
