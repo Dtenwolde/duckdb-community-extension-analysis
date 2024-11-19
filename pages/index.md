@@ -88,7 +88,7 @@ LIMIT 10;
       comparison="growth_rate"
       comparisonFmt="pct1"
       comparisonTitle="vs. Last Week"
-      title="Total Weekly Downloads"
+      title="Total Downloads Last Week"
     />
     <BigValue 
       data={monthly_downloads_for_all} 
@@ -98,7 +98,7 @@ LIMIT 10;
       comparison="growth_rate"
       comparisonFmt="pct1"
       comparisonTitle="vs. Last Month"
-      title="Total Monthly Downloads"
+      title="Total Downloads Last Month"
     />
     <LastRefreshed />
   </Grid>
@@ -180,6 +180,7 @@ select sum(downloads_last_week) as total_downloads from downloads where extensio
       <BigValue
       data={total_downloads_extension_data}
       value="total_downloads"
+      title="Total Downloads Lifetime"
       fmt=num0
       />
       <BigValue 
@@ -190,7 +191,7 @@ select sum(downloads_last_week) as total_downloads from downloads where extensio
         comparison="growth_rate"
         comparisonFmt="pct1"
         comparisonTitle="vs. Last Week"
-        title="Total Weekly Downloads"
+        title="Total Downloads Last Week"
       />
       <BigValue 
         data={selected_extension_monthly} 
@@ -200,7 +201,7 @@ select sum(downloads_last_week) as total_downloads from downloads where extensio
         comparison="growth_rate"
         comparisonFmt="pct1"
         comparisonTitle="vs. Last Month"
-        title="Total Monthly Downloads"
+        title="Total Downloads Last Month"
       />
 
        <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
