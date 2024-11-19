@@ -16,7 +16,6 @@ WITH extension_totals AS (
     FROM downloads
     GROUP BY extension
     ORDER BY total_downloads DESC
-    LIMIT '${inputs.chart_top_or_all}'
 )
 SELECT 
     d.week_number,
@@ -106,12 +105,6 @@ LIMIT 10;
 
   <!-- Right Column: LineChart and ButtonGroup -->
   <div style="position: relative;">
-    <div style="position: absolute; top: 10px; right: 10px; z-index: 10; background-color: white; padding: 5px; border-radius: 5px;">
-      <ButtonGroup name="chart_top_or_all" defaultValue="5">
-        <ButtonGroupItem valueLabel="Top 5" value="5" />
-        <ButtonGroupItem valueLabel="All" value="1000" />
-      </ButtonGroup>
-    </div>
     <LineChart
       data={ordered_data}
       x="week_number"
@@ -253,7 +246,7 @@ select * from extension_details where extension = '${inputs.selected_item.value}
         </div>
     </div>
     </Grid>
-    </div>
+  </div>
   <!-- Right Column: Line Chart and Description -->
   <div>
     <LineChart
