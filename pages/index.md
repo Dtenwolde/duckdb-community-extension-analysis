@@ -158,6 +158,10 @@ limit 10;
 select * from extension_details where extension = '${inputs.selected_item.value}'
 ```
 
+```sql total_downloads_extension_data
+select sum(downloads_last_week) as total_downloads from downloads where extension = '${inputs.selected_item.value}' group by extension
+```
+
 
 <Grid cols="2" gap="30px">
   <!-- Left Column: Metadata and Links -->
@@ -173,6 +177,11 @@ select * from extension_details where extension = '${inputs.selected_item.value}
 
     <!-- BigValue Stats -->
     <Grid cols="1" gap="15px" style="margin-top: 15px;">
+      <BigValue
+      data={total_downloads_extension_data}
+      value="total_downloads"
+      fmt=num0
+      />
       <BigValue 
         data={selected_extension_data} 
         value="last_week_downloads"
