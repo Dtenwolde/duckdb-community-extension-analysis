@@ -2,7 +2,7 @@ name: Update Weekly Data
 
 on:
   schedule:
-    - cron: '0 0 * * 0' # Runs every Sunday at midnight
+    - cron: '0 0 * * *' # Runs every day at midnight
   workflow_dispatch:  # This line enables the manual trigger
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
         run: pip install pandas requests
 
       - name: Run Update Script
-        run: python download_weekly.py
+        run: python download_all_weekly.py
 
       - name: Run Github stars script
         run: python get_github_stars.py
@@ -33,5 +33,5 @@ jobs:
           git config --local user.email "dljtw98@gmail.com"
           git config --local user.name "Daniel ten Wolde"
           git add compiled_download_metrics.csv
-          git commit -m "Update weekly download data"
+          git commit -m "Update daily download data"
           git push origin main
