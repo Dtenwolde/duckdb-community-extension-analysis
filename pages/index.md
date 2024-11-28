@@ -1,7 +1,7 @@
 ---
 title: DuckDB community extension weekly downloads
 description: Explore dynamic insights into weekly and monthly download trends for DuckDB community extensions, all in one interactive dashboard!
-og: main.png
+og: /images/main.png
 ---
 
 
