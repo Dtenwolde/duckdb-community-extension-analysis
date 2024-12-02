@@ -1,12 +1,16 @@
 name: Update Weekly Data
 
 on:
+  push:
+    branches:
+      - evidence  # Only trigger on pushes to the 'evidence' branch
   schedule:
-    - cron: '0 0 * * *' # Runs every day at midnight
-  workflow_dispatch:  # This line enables the manual trigger
+    - cron: '0 0 * * *' # Runs every day at midnight, but only on the 'evidence' branch
+  workflow_dispatch:  # Allows manual trigger, but only on the 'evidence' branch
 
 jobs:
   update_data:
+    if: github.ref == 'refs/heads/evidence'  # Ensures the job only runs on the 'evidence' branch
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -33,5 +37,4 @@ jobs:
           git config --local user.email "dljtw98@gmail.com"
           git config --local user.name "Daniel ten Wolde"
           git add compiled_download_metrics.csv
-          git commit -m "Update daily download data"
-          git push origin main
+          git commit -m "
