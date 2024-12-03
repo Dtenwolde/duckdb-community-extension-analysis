@@ -40,4 +40,4 @@ jobs:
           git config --local user.name "Daniel ten Wolde"
           git add *
           git commit -m "Update daily download data"
-          git push origin main
+          git push origin evidence
