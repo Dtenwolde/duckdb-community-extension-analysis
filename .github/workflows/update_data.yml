@@ -22,7 +22,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install Dependencies
-        run: pip install pandas requests duckdb numpy pyyaml
+        run: pip install pandas requests duckdb numpy pyyaml markdown
 
       - name: Run Update Script
         run: python download_all_weekly.py
