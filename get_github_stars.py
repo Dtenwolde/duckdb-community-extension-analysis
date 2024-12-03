@@ -5,12 +5,12 @@ import os
 from markdown import markdown  # Import the markdown library for conversion
 
 
-# Function to load the GitHub token from a secret file
-def load_github_token(file_path=".github_token"):
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Token file not found: {file_path}")
-    with open(file_path, "r") as file:
-        return file.read().strip()
+# Function to load the GitHub token from an environment variable
+def load_github_token():
+    token = os.getenv("GITHUB_TOKEN")
+    if not token:
+        raise EnvironmentError("GitHub token not found. Ensure GITHUB_TOKEN is set as an environment variable.")
+    return token
 
 
 # Load the GitHub token
