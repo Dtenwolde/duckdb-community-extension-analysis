@@ -28,6 +28,8 @@ jobs:
         run: python download_all_weekly.py
 
       - name: Run Github stars script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python get_github_stars.py
 
       - name: Commit and Push Changes
