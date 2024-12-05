@@ -3,14 +3,13 @@ name: Update Weekly Data
 on:
   push:
     branches:
-      - evidence  # Only trigger on pushes to the 'evidence' branch
+      - evidence  # Trigger on pushes to the 'evidence' branch
   schedule:
-    - cron: '0 0 * * *' # Runs every day at midnight, but only on the 'evidence' branch
-  workflow_dispatch:  # Allows manual trigger, but only on the 'evidence' branch
+    - cron: '0 0 * * *'  # Runs every day at midnight UTC
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
   update_data:
-    if: github.ref == 'refs/heads/evidence'  # Ensures the job only runs on the 'evidence' branch
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
