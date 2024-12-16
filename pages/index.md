@@ -1,6 +1,6 @@
 ---
-title: DuckDB community extension weekly downloads
-description: Explore dynamic insights into weekly and monthly download trends for DuckDB community extensions, all in one interactive dashboard!
+title: DuckDB extension weekly downloads
+description: Explore dynamic insights into weekly and monthly download trends for DuckDB extensions, all in one interactive dashboard!
 og: /images/main.png
 ---
 
@@ -188,7 +188,7 @@ LIMIT 10;
 
   <!-- Right Column: LineChart and ButtonGroup -->
   <div style="position: relative;">
-    <div style="position: absolute; top: 10px; right: 10px; z-index: 10; background-color: white; padding: 5px; border-radius: 5px;">
+    <div style="position: absolute; top: -30px; right: 10px; z-index: 10; background-color: white; padding: 1px; border-radius: 1px;">
       <ButtonGroup name=regular_or_community defaultValue="Regular">
           <ButtonGroupItem valueLabel="Regular" value="Regular" />
           <ButtonGroupItem valueLabel="Community" value="Community" />
@@ -205,7 +205,7 @@ LIMIT 10;
   </div>
 </Grid>
 
-## Community Extension Details
+## Extension Details
 
 ```sql unique_extensions
 select extension, type
