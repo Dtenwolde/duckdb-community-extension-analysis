@@ -8,7 +8,7 @@ og: /images/main.png
 # Weekly Downloads Overview
 
 ```sql all_downloads
-select extension, downloads_last_week, week_number, sum(downloads_last_week) as total_downloads from downloads group by all order by total_downloads desc; 
+select extension, downloads_last_week, week_number, sum(downloads_last_week), type as total_downloads from downloads group by all order by total_downloads desc; 
 ```
 ```sql ordered_data
 WITH extension_totals AS (
@@ -16,6 +16,7 @@ WITH extension_totals AS (
         extension,
         SUM(downloads_last_week) AS total_downloads
     FROM downloads
+    where type = '${inputs.regular_or_community}'
     GROUP BY extension
     ORDER BY total_downloads DESC
 )
@@ -28,12 +29,13 @@ JOIN extension_totals et ON d.extension = et.extension
 ORDER BY et.total_downloads DESC, d.week_number;
 ```
 
-```sql weekly_downloads_for_all
+```sql weekly_downloads_for_all_community
 WITH weekly_downloads AS (
     SELECT 
         _last_update::DATE AS week_date,
         SUM(downloads_last_week) AS last_week_downloads
     FROM downloads
+    WHERE type = 'Community'
     GROUP BY _last_update::DATE
     ORDER BY week_date
 ),
@@ -54,12 +56,40 @@ ORDER BY week_date DESC
 LIMIT 10;
 ```
 
-```sql monthly_downloads_for_all
+```sql weekly_downloads_for_all_regular
+WITH weekly_downloads AS (
+    SELECT 
+        _last_update::DATE AS week_date,
+        SUM(downloads_last_week) AS last_week_downloads
+    FROM downloads
+    WHERE type = 'Regular'
+
+    GROUP BY _last_update::DATE
+    ORDER BY week_date
+),
+growth_data AS (
+    SELECT 
+        week_date,
+        last_week_downloads,
+        (last_week_downloads - LAG(last_week_downloads) OVER (ORDER BY week_date)) 
+            / LAG(last_week_downloads) OVER (ORDER BY week_date) AS growth_rate
+    FROM weekly_downloads
+)
+SELECT 
+    week_date,
+    last_week_downloads,
+    growth_rate
+FROM growth_data
+ORDER BY week_date DESC
+LIMIT 10;
+```
+
+```sql monthly_downloads_for_all_community
 WITH monthly_downloads AS (
     SELECT 
         DATE_TRUNC('month', _last_update)::DATE AS month_date,
         SUM(downloads_last_week) AS total_monthly_downloads
-    FROM downloads
+    FROM downloads where type = 'Community'
     GROUP BY month_date
     ORDER BY month_date
 ),
@@ -79,34 +109,91 @@ FROM growth_data
 ORDER BY month_date DESC
 LIMIT 10;
 ```
+```sql monthly_downloads_for_all_regular
+WITH monthly_downloads AS (
+    SELECT 
+        DATE_TRUNC('month', _last_update)::DATE AS month_date,
+        SUM(downloads_last_week) AS total_monthly_downloads
+    FROM downloads
+    WHERE type = 'Regular'
+    GROUP BY month_date
+    ORDER BY month_date
+),
+growth_data AS (
+    SELECT 
+        month_date,
+        total_monthly_downloads,
+        (total_monthly_downloads - LAG(total_monthly_downloads) OVER (ORDER BY month_date)) 
+            / LAG(total_monthly_downloads) OVER (ORDER BY month_date) AS growth_rate
+    FROM monthly_downloads
+)
+SELECT 
+    month_date,
+    total_monthly_downloads,
+    growth_rate
+FROM growth_data
+ORDER BY month_date DESC
+LIMIT 10;
+```
+
 <Grid cols="2" gap="20px">
   <!-- Left Column: BigValues -->
-  <Grid cols="1" gap="20px">
-    <BigValue 
-      data={weekly_downloads_for_all} 
-      value="last_week_downloads"
-      sparkline="week_date"
-      fmt=num0
-      comparison="growth_rate"
-      comparisonFmt="pct1"
-      comparisonTitle="vs. Last Week"
-      title="Total Downloads Last Week"
-    />
-    <BigValue 
-      data={monthly_downloads_for_all} 
-      value="total_monthly_downloads"
-      sparkline="month_date"
-      fmt=num0
-      comparison="growth_rate"
-      comparisonFmt="pct1"
-      comparisonTitle="vs. Last Month"
-      title="Total Downloads Last Month"
-    />
+  <Grid cols="2" gap="20px">
+    <Grid cols="1" gap="20px">
+        <BigValue 
+          data={weekly_downloads_for_all_regular} 
+          value="last_week_downloads"
+          sparkline="week_date"
+          fmt=num0
+          comparison="growth_rate"
+          comparisonFmt="pct1"
+          comparisonTitle="vs. Last Week"
+          title="Total Regular Downloads Last Week"
+        />
+        <BigValue 
+          data={monthly_downloads_for_all_regular} 
+          value="total_monthly_downloads"
+          sparkline="month_date"
+          fmt=num0
+          comparison="growth_rate"
+          comparisonFmt="pct1"
+          comparisonTitle="vs. Last Month"
+          title="Total Regular Downloads Last Month"
+        />
+    </Grid>
+    <Grid cols="1" gap="20px">
+        <BigValue 
+          data={weekly_downloads_for_all_community} 
+          value="last_week_downloads"
+          sparkline="week_date"
+          fmt=num0
+          comparison="growth_rate"
+          comparisonFmt="pct1"
+          comparisonTitle="vs. Last Week"
+          title="Total Community Downloads Last Week"
+        />
+        <BigValue 
+          data={monthly_downloads_for_all_community} 
+          value="total_monthly_downloads"
+          sparkline="month_date"
+          fmt=num0
+          comparison="growth_rate"
+          comparisonFmt="pct1"
+          comparisonTitle="vs. Last Month"
+          title="Total Community Downloads Last Month"
+        />
+    </Grid>
     <LastRefreshed />
   </Grid>
 
   <!-- Right Column: LineChart and ButtonGroup -->
   <div style="position: relative;">
+    <div style="position: absolute; top: 10px; right: 10px; z-index: 10; background-color: white; padding: 5px; border-radius: 5px;">
+      <ButtonGroup name=regular_or_community defaultValue="Regular">
+          <ButtonGroupItem valueLabel="Regular" value="Regular" />
+          <ButtonGroupItem valueLabel="Community" value="Community" />
+      </ButtonGroup>
+    </div>
     <LineChart
       data={ordered_data}
       x="week_number"
@@ -118,19 +205,19 @@ LIMIT 10;
   </div>
 </Grid>
 
-## Extension Details
+## Community Extension Details
 
 ```sql unique_extensions
-select extension
-from downloads 
-group by 1
+select extension, type
+from downloads
+group by all
 ```
 
 ```sql selected_extension_data
 select 
-        _last_update::DATE as week_date,
-        downloads_last_week as last_week_downloads,
-        (downloads_last_week - lag(downloads_last_week) over (order by _last_update::DATE)) / lag(downloads_last_week) over (order by _last_update::DATE) as growth_rate
+    _last_update::DATE as week_date,
+    downloads_last_week as last_week_downloads,
+    (downloads_last_week - lag(downloads_last_week) over (order by _last_update::DATE)) / lag(downloads_last_week) over (order by _last_update::DATE) as growth_rate
 from downloads
 where extension = '${inputs.selected_item.value}'
 order by week_date desc
@@ -161,7 +248,13 @@ select * from extension_details where extension = '${inputs.selected_item.value}
 ```
 
 ```sql total_downloads_extension_data
-select sum(downloads_last_week) as total_downloads from downloads where extension = '${inputs.selected_item.value}' group by extension
+select sum(downloads_last_week) as total_downloads from downloads where extension = '${inputs.selected_item.value}' group by extension 
+```
+
+```sql downloads_by_week
+select week_number as week, downloads_last_week as downloads
+from downloads
+where extension = '${inputs.selected_item.value}'
 ```
 
 
@@ -205,6 +298,10 @@ select sum(downloads_last_week) as total_downloads from downloads where extensio
         comparisonTitle="vs. Last Month"
         title="Total Downloads Last Month"
       />
+
+    <div>
+
+    {#if extension_details.length !== 0}
 
        <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
       <!-- Links and Metadata -->
@@ -257,6 +354,13 @@ select sum(downloads_last_week) as total_downloads from downloads where extensio
           <div style="margin-left: 20px;">{@html extension_details[0].excluded_platforms_html}</div>
         </div>
     </div>
+
+    </div>
+
+    {/if}
+
+
+
     </Grid>
   </div>
   <!-- Right Column: Line Chart and Description -->
@@ -269,18 +373,16 @@ select sum(downloads_last_week) as total_downloads from downloads where extensio
       title="Weekly Downloads for {inputs.selected_item.value}"
     />
 
+    {#if extension_details.length !== 0}
+    
+
     <!-- Extended Description -->
     <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
       <h2>Description</h2>
       {@html extension_details[0].extended_description_html}
     </div>
+
+    {/if}
+
   </div>
 </Grid>
-
-[//]: # (## Weekly Downloads for Selected Extension)
-
-```sql downloads_by_week
-select week_number as week, downloads_last_week as downloads
-from downloads
-where extension = '${inputs.selected_item.value}'
-```
