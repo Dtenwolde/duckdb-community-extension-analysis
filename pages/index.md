@@ -63,7 +63,6 @@ WITH weekly_downloads AS (
         SUM(downloads_last_week) AS last_week_downloads
     FROM downloads
     WHERE type = 'Regular'
-
     GROUP BY _last_update::DATE
     ORDER BY week_date
 ),
@@ -270,6 +269,16 @@ where extension = '${inputs.selected_item.value}'
         defaultValue="duckpgq"
     />
 
+    {#if extension_details.length !== 0}
+        <Alert status="info">
+            Community Extension    
+        </Alert>
+    {:else}
+        <Alert status="info">
+            Regular Extension    
+        </Alert>
+    {/if}
+
     <!-- BigValue Stats -->
     <Grid cols="1" gap="15px" style="margin-top: 15px;">
       <BigValue
@@ -359,8 +368,6 @@ where extension = '${inputs.selected_item.value}'
 
     {/if}
 
-
-
     </Grid>
   </div>
   <!-- Right Column: Line Chart and Description -->
@@ -374,7 +381,6 @@ where extension = '${inputs.selected_item.value}'
     />
 
     {#if extension_details.length !== 0}
-    
 
     <!-- Extended Description -->
     <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
