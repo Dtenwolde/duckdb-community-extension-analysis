@@ -18,7 +18,7 @@ GITHUB_TOKEN = load_github_token()
 conn = duckdb.connect("sources/downloads/download_data.duckdb")
 
 # Fetch unique extensions
-unique_extensions = conn.execute("SELECT DISTINCT extension FROM downloads").fetchall()
+unique_extensions = conn.execute("SELECT DISTINCT extension FROM downloads where type = 'Community'").fetchall()
 
 
 # Function to fetch GitHub stars
