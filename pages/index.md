@@ -313,7 +313,7 @@ where extension = '${inputs.selected_item.value}'
 
     {#if extension_details.length !== 0}
 
-    <div style="margin-top: 20px; padding: 15px; background-color: #777; border-radius: 8px;">
+    <div style="margin-top: 20px; padding: 15px; background-color: #0284c7; border-radius: 8px;">
       <!-- Links and Metadata -->
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <!-- GitHub Link -->
@@ -384,7 +384,7 @@ where extension = '${inputs.selected_item.value}'
     {#if extension_details.length !== 0}
 
     <!-- Extended Description -->
-    <div style="margin-top: 20px; padding: 15px; background-color: #777; border-radius: 8px;">
+    <div style="margin-top: 20px; padding: 15px; background-color: #0284c7; border-radius: 8px;">
       <h2>Description</h2>
       {@html extension_details[0].extended_description_html}
     </div>
