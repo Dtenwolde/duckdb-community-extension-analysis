@@ -19,6 +19,7 @@ WITH extension_totals AS (
     where type = '${inputs.regular_or_community}'
     GROUP BY extension
     ORDER BY total_downloads DESC
+    LIMIT 10
 )
 SELECT 
     d.week_number,
