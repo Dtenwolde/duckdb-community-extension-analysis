@@ -12,7 +12,7 @@ conn = duckdb.connect("sources/downloads/download_data.duckdb")
 
 # Ensure the `downloads` table exists with the updated schema
 conn.execute("""
-    CREATE TABLE IF NOT EXISTS downloads (
+    CREATE TABLE IF NOT EXISTS duckdb_downloads (
         extension VARCHAR,
         downloads_last_week BIGINT,
         _last_update DATE,
@@ -30,7 +30,7 @@ while current_date <= end_date:
     iso_year, iso_week, _ = current_date.isocalendar()
 
     # Construct the URL for the current week's data
-    url = f'https://community-extensions.duckdb.org/download-stats-weekly/{iso_year}/{iso_week:02}.json'
+    url = f'https://extensions.duckdb.org/download-stats-weekly/{iso_year}/{iso_week}.json'
     try:
         # Attempt to fetch the data
         response = requests.get(url)
@@ -52,13 +52,14 @@ while current_date <= end_date:
             weekly_data['_last_update'] = current_date
             weekly_data['week_number'] = iso_week
             weekly_data['year'] = iso_year
-            weekly_data['type'] = 'Community'
+            weekly_data['type'] = 'DuckDB'
+
             # Debug: Print the data fetched for verification
             print(f"Data fetched for week {iso_year}-W{iso_week}:", weekly_data.head())
             if not weekly_data.empty:
                 # Use INSERT OR REPLACE to update or insert data into the `downloads` table
                 conn.executemany("""
-                    INSERT OR REPLACE INTO downloads VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO downloads VALUES (?, ?, ?, ?, ?)
                 """, weekly_data.values.tolist())
     except (requests.HTTPError, ValueError) as e:
         # Print the error if data for the current week is not available or parsing fails
@@ -67,4 +68,4 @@ while current_date <= end_date:
     # Move to the next week
     current_date += timedelta(weeks=1)
 
-print("Data has been successfully written to the `downloads` table in the DuckDB database.")
+print("Data has been successfully written to the `duckdb_downloads` table in the DuckDB database.")

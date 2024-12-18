@@ -187,8 +187,8 @@ LIMIT 10;
 
   <!-- Right Column: LineChart and ButtonGroup -->
   <div style="position: relative;">
-    <div style="position: absolute; top: -30px; right: 10px; z-index: 10; background-color: white; padding: 1px; border-radius: 1px;">
-      <ButtonGroup name=regular_or_community defaultValue="Regular">
+    <div style="position: absolute; top: -30px; right: 0px; z-index: 10; padding: 1px; border-radius: 1px;">
+      <ButtonGroup name=regular_or_community defaultValue="Regular" colorPalette=myColorPalette>
           <ButtonGroupItem valueLabel="Regular" value="Regular" />
           <ButtonGroupItem valueLabel="Community" value="Community" />
       </ButtonGroup>
