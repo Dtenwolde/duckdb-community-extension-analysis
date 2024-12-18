@@ -201,6 +201,7 @@ LIMIT 10;
       series="extension"
       yAxisTitle="Downloads per Week"
       title="Weekly Downloads per Extension"
+      subtitle="Top 10"
     />
   </div>
 </Grid>
