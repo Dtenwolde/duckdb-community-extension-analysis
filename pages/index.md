@@ -8,7 +8,7 @@ og: /images/main.png
 # Weekly Downloads Overview
 
 ```sql all_downloads
-select extension, downloads_last_week, week_number, sum(downloads_last_week), type as total_downloads from downloads group by all order by total_downloads desc; 
+select extension, downloads_last_week, year, week_number, sum(downloads_last_week), type as total_downloads from downloads where week_number = 52 group by all order by total_downloads desc; 
 ```
 ```sql ordered_data
 WITH extension_totals AS (
@@ -22,8 +22,9 @@ WITH extension_totals AS (
     LIMIT 10
 )
 SELECT 
-    d.week_number,
+--     array_slice(d.year::VARCHAR, 3, 4) || '-' || d.week_number as week_number,
     d.extension,
+    d._last_update as date,
     d.downloads_last_week
 FROM downloads d
 JOIN extension_totals et ON d.extension = et.extension
@@ -196,7 +197,7 @@ LIMIT 10;
     </div>
     <LineChart
       data={ordered_data}
-      x="week_number"
+      x="date"
       y="downloads_last_week"
       series="extension"
       yAxisTitle="Downloads per Week"
@@ -253,7 +254,7 @@ select sum(downloads_last_week) as total_downloads from downloads where extensio
 ```
 
 ```sql downloads_by_week
-select week_number as week, downloads_last_week as downloads
+select _last_update as date, downloads_last_week as downloads
 from downloads
 where extension = '${inputs.selected_item.value}'
 ```
@@ -376,7 +377,7 @@ where extension = '${inputs.selected_item.value}'
   <div>
     <LineChart
       data={downloads_by_week}
-      x=week
+      x=date
       y=downloads
       yAxisTitle="Downloads per Week"
       title="Weekly Downloads for {inputs.selected_item.value}"
