@@ -30,16 +30,17 @@ def download_data(conn, endpoint, type):
     while current_date <= end_date:
         # Calculate the ISO year and week number
         iso_year, iso_week, _ = current_date.isocalendar()
+        padded_iso_week = f"{iso_week:02d}"
 
         # Construct the URL for the current week's data
-        url = f'{endpoint}/{iso_year}/{iso_week}.json'
+        url = f'{endpoint}/{iso_year}/{padded_iso_week}.json'
         try:
             # Attempt to fetch the data
             response = requests.get(url)
             response.raise_for_status()
 
             # Debug: Print status and URL
-            print(f"Fetching data for {iso_year}-W{iso_week}: {url}")
+            print(f"Fetching data for {iso_year}-W{padded_iso_week}: {url}")
 
             # Load JSON data directly from response
             data = response.json()
@@ -52,12 +53,12 @@ def download_data(conn, endpoint, type):
                 )
                 # Add columns for the week and last update timestamp
                 weekly_data['_last_update'] = current_date
-                weekly_data['week_number'] = iso_week
+                weekly_data['week_number'] = padded_iso_week
                 weekly_data['year'] = iso_year
                 weekly_data['type'] = type
 
                 # Debug: Print the data fetched for verification
-                print(f"Data fetched for week {iso_year}-W{iso_week}:", weekly_data.head())
+                print(f"Data fetched for week {iso_year}-W{padded_iso_week}:", weekly_data.head())
                 if not weekly_data.empty:
                     # Use INSERT OR REPLACE to update or insert data into the `downloads` table
                     conn.executemany("""
