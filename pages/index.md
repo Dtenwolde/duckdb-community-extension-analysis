@@ -315,7 +315,7 @@ where extension = '${inputs.selected_item.value}'
 
     {#if extension_details.length !== 0}
 
-    <div class="p-4 rounded-md bg-gray-100 text-black markdown">
+    <div class="p-4 rounded-md bg-gray-200 text-black markdown">
       <!-- Links and Metadata -->
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <!-- GitHub Link -->
@@ -386,7 +386,7 @@ where extension = '${inputs.selected_item.value}'
     {#if extension_details.length !== 0}
 
     <!-- Extended Description -->
-    <div class="p-4 rounded-md bg-gray-100 text-black markdown">
+    <div class="p-4 rounded-md bg-gray-200 text-black markdown">
       <h2>Description</h2>
       {@html extension_details[0].extended_description_html}
     </div>
