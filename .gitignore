@@ -1,11 +1,27 @@
-.evidence/template
+# Evidence
+.evidence/
+static/data
+
+# Build output
 .svelte-kit
 build
+
+# Dependencies
 node_modules
-.DS_Store
-static/data
-*.options.yaml
+
+# IDE
 .vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+
+# Secrets
 .env
-.evidence/meta
 .github_token
+*.options.yaml
+
+# Python
+venv/
+__pycache__/
+*.pyc

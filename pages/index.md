@@ -8,7 +8,10 @@ og: /images/main.png
 # Weekly Downloads Overview
 
 ```sql all_downloads
-select extension, downloads_last_week, year, week_number, sum(downloads_last_week), type as total_downloads from downloads where week_number = 52 group by all order by total_downloads desc; 
+select extension, downloads_last_week, year, week_number, type
+from downloads
+where _last_update = (select max(_last_update) from downloads)
+order by downloads_last_week desc;
 ```
 ```sql ordered_data
 WITH extension_totals AS (
@@ -16,7 +19,7 @@ WITH extension_totals AS (
         extension,
         SUM(downloads_last_week) AS total_downloads
     FROM downloads
-    where type = '${inputs.regular_or_community}'
+    where type = coalesce(nullif('${inputs.regular_or_community}', ''), 'Regular')
     GROUP BY extension
     ORDER BY total_downloads DESC
     LIMIT 10
@@ -33,23 +36,22 @@ ORDER BY et.total_downloads DESC, d.week_number;
 
 ```sql weekly_downloads_for_all_community
 WITH weekly_downloads AS (
-    SELECT 
+    SELECT
         _last_update::DATE AS week_date,
         SUM(downloads_last_week) AS last_week_downloads
     FROM downloads
     WHERE type = 'Community'
     GROUP BY _last_update::DATE
-    ORDER BY week_date
 ),
 growth_data AS (
-    SELECT 
+    SELECT
         week_date,
         last_week_downloads,
-        (last_week_downloads - LAG(last_week_downloads) OVER (ORDER BY week_date)) 
+        (last_week_downloads - LAG(last_week_downloads) OVER (ORDER BY week_date))
             / LAG(last_week_downloads) OVER (ORDER BY week_date) AS growth_rate
     FROM weekly_downloads
 )
-SELECT 
+SELECT
     week_date,
     last_week_downloads,
     growth_rate
@@ -60,23 +62,22 @@ LIMIT 10;
 
 ```sql weekly_downloads_for_all_regular
 WITH weekly_downloads AS (
-    SELECT 
+    SELECT
         _last_update::DATE AS week_date,
         SUM(downloads_last_week) AS last_week_downloads
     FROM downloads
     WHERE type = 'Regular'
     GROUP BY _last_update::DATE
-    ORDER BY week_date
 ),
 growth_data AS (
-    SELECT 
+    SELECT
         week_date,
         last_week_downloads,
-        (last_week_downloads - LAG(last_week_downloads) OVER (ORDER BY week_date)) 
+        (last_week_downloads - LAG(last_week_downloads) OVER (ORDER BY week_date))
             / LAG(last_week_downloads) OVER (ORDER BY week_date) AS growth_rate
     FROM weekly_downloads
 )
-SELECT 
+SELECT
     week_date,
     last_week_downloads,
     growth_rate
@@ -87,22 +88,22 @@ LIMIT 10;
 
 ```sql monthly_downloads_for_all_community
 WITH monthly_downloads AS (
-    SELECT 
+    SELECT
         DATE_TRUNC('month', _last_update)::DATE AS month_date,
         SUM(downloads_last_week) AS total_monthly_downloads
-    FROM downloads where type = 'Community'
+    FROM downloads
+    WHERE type = 'Community'
     GROUP BY month_date
-    ORDER BY month_date
 ),
 growth_data AS (
-    SELECT 
+    SELECT
         month_date,
         total_monthly_downloads,
-        (total_monthly_downloads - LAG(total_monthly_downloads) OVER (ORDER BY month_date)) 
+        (total_monthly_downloads - LAG(total_monthly_downloads) OVER (ORDER BY month_date))
             / LAG(total_monthly_downloads) OVER (ORDER BY month_date) AS growth_rate
     FROM monthly_downloads
 )
-SELECT 
+SELECT
     month_date,
     total_monthly_downloads,
     growth_rate
@@ -112,23 +113,22 @@ LIMIT 10;
 ```
 ```sql monthly_downloads_for_all_regular
 WITH monthly_downloads AS (
-    SELECT 
+    SELECT
         DATE_TRUNC('month', _last_update)::DATE AS month_date,
         SUM(downloads_last_week) AS total_monthly_downloads
     FROM downloads
     WHERE type = 'Regular'
     GROUP BY month_date
-    ORDER BY month_date
 ),
 growth_data AS (
-    SELECT 
+    SELECT
         month_date,
         total_monthly_downloads,
-        (total_monthly_downloads - LAG(total_monthly_downloads) OVER (ORDER BY month_date)) 
+        (total_monthly_downloads - LAG(total_monthly_downloads) OVER (ORDER BY month_date))
             / LAG(total_monthly_downloads) OVER (ORDER BY month_date) AS growth_rate
     FROM monthly_downloads
 )
-SELECT 
+SELECT
     month_date,
     total_monthly_downloads,
     growth_rate
@@ -191,7 +191,7 @@ LIMIT 10;
   <div style="position: relative;">
     <div style="position: absolute; top: -30px; right: 0px; z-index: 10; padding: 1px; border-radius: 1px;">
       <ButtonGroup name=regular_or_community defaultValue="Regular" colorPalette=myColorPalette>
-          <ButtonGroupItem valueLabel="Regular" value="Regular" />
+          <ButtonGroupItem valueLabel="Regular" value="Regular" default />
           <ButtonGroupItem valueLabel="Community" value="Community" />
       </ButtonGroup>
     </div>
@@ -212,58 +212,87 @@ LIMIT 10;
 ```sql unique_extensions
 select extension, type
 from downloads
+where type = coalesce(nullif('${inputs.extension_type_filter}', ''), 'Community')
 group by all
+order by extension
+```
+
+```sql selected_extension_type
+select coalesce(
+    (select type from downloads where extension = '${inputs.selected_item?.value || "duckpgq"}' limit 1),
+    'Community'
+) as type
 ```
 
 ```sql selected_extension_data
-select 
-    _last_update::DATE as week_date,
-    downloads_last_week as last_week_downloads,
-    (downloads_last_week - lag(downloads_last_week) over (order by _last_update::DATE)) / lag(downloads_last_week) over (order by _last_update::DATE) as growth_rate
-from downloads
-where extension = '${inputs.selected_item.value}'
-order by week_date desc
-limit 10;
+WITH all_weeks AS (
+    SELECT
+        _last_update::DATE as week_date,
+        downloads_last_week as last_week_downloads,
+        (downloads_last_week - LAG(downloads_last_week) OVER (ORDER BY _last_update::DATE))
+            / LAG(downloads_last_week) OVER (ORDER BY _last_update::DATE) AS growth_rate
+    FROM downloads
+    WHERE extension = '${inputs.selected_item?.value || "duckpgq"}'
+)
+SELECT week_date, last_week_downloads, growth_rate
+FROM all_weeks
+ORDER BY week_date DESC
+LIMIT 10;
 ```
 
 ```sql selected_extension_data_cumulative
 select 
         sum(downloads_last_week) as total_downloads
 from downloads
-where extension = '${inputs.selected_item.value}'
+where extension = '${inputs.selected_item?.value || "duckpgq"}'
 ```
 
 ```sql selected_extension_monthly
-select 
-    date_trunc('month', _last_update)::DATE as month_date,
-    sum(downloads_last_week) as downloads_last_month,
-    (sum(downloads_last_week) - lag(sum(downloads_last_week)) over (order by date_trunc('month', _last_update))) / lag(sum(downloads_last_week)) over (order by date_trunc('month', _last_update)) as growth_rate
-from downloads
-where extension = '${inputs.selected_item.value}'
-group by date_trunc('month', _last_update)
-order by month_date desc
-limit 10;
+WITH monthly AS (
+    SELECT
+        DATE_TRUNC('month', _last_update)::DATE AS month_date,
+        SUM(downloads_last_week) AS downloads_last_month
+    FROM downloads
+    WHERE extension = '${inputs.selected_item?.value || "duckpgq"}'
+    GROUP BY DATE_TRUNC('month', _last_update)
+),
+growth_data AS (
+    SELECT
+        month_date,
+        downloads_last_month,
+        (downloads_last_month - LAG(downloads_last_month) OVER (ORDER BY month_date))
+            / LAG(downloads_last_month) OVER (ORDER BY month_date) AS growth_rate
+    FROM monthly
+)
+SELECT month_date, downloads_last_month, growth_rate
+FROM growth_data
+ORDER BY month_date DESC
+LIMIT 10;
 ```
 
 ```sql extension_details
-select * from extension_details where extension = '${inputs.selected_item.value}'
+select * from extension_details where extension = '${inputs.selected_item?.value || "duckpgq"}'
 ```
 
 ```sql total_downloads_extension_data
-select sum(downloads_last_week) as total_downloads from downloads where extension = '${inputs.selected_item.value}' group by extension 
+select sum(downloads_last_week) as total_downloads from downloads where extension = '${inputs.selected_item?.value || "duckpgq"}' group by extension 
 ```
 
 ```sql downloads_by_week
 select _last_update as date, downloads_last_week as downloads
 from downloads
-where extension = '${inputs.selected_item.value}'
+where extension = '${inputs.selected_item?.value || "duckpgq"}'
 ```
 
 
 <Grid cols="2" gap="30px">
   <!-- Left Column: Metadata and Links -->
   <div>
-    <!-- Dropdown for selecting extensions -->
+    <!-- Type filter then extension dropdown -->
+    <ButtonGroup name=extension_type_filter defaultValue="Community">
+        <ButtonGroupItem valueLabel="Community" value="Community" default />
+        <ButtonGroupItem valueLabel="Regular" value="Regular" />
+    </ButtonGroup>
     <Dropdown
         name=selected_item
         data={unique_extensions}
@@ -272,14 +301,10 @@ where extension = '${inputs.selected_item.value}'
         defaultValue="duckpgq"
     />
 
-    {#if extension_details.length !== 0}
-        <Alert status="info">
-            Community Extension    
-        </Alert>
-    {:else}
-        <Alert status="info">
-            Regular Extension    
-        </Alert>
+    {#if selected_extension_type.length > 0}
+    <Alert status="info">
+        {selected_extension_type[0].type} Extension
+    </Alert>
     {/if}
 
     <!-- BigValue Stats -->
@@ -327,7 +352,7 @@ where extension = '${inputs.selected_item.value}'
         <!-- Community Page Link -->
         <div style="display: flex; align-items: center;">
           <img src="https://fonts.gstatic.com/s/i/materialicons/group/v8/24px.svg" alt="Community" width="16" height="16" />
-          <a href={`https://duckdb.org/community_extensions/extensions/${inputs.selected_item.value}.html`} target="_blank" style="margin-left: 8px;">View on Community Page</a>
+          <a href={`https://duckdb.org/community_extensions/extensions/${inputs.selected_item?.value || "duckpgq"}.html`} target="_blank" style="margin-left: 8px;">View on Community Page</a>
         </div>
 
         <!-- Stars -->
@@ -380,7 +405,7 @@ where extension = '${inputs.selected_item.value}'
       x=date
       y=downloads
       yAxisTitle="Downloads per Week"
-      title="Weekly Downloads for {inputs.selected_item.value}"
+      title="Weekly Downloads for {inputs.selected_item?.value || 'duckpgq'}"
     />
 
     {#if extension_details.length !== 0}

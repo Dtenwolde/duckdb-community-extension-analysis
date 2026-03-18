@@ -4,8 +4,6 @@ import pandas as pd
 import duckdb
 from datetime import datetime, timedelta
 
-# Define the start and end dates
-start_date = datetime(2024, 10, 1)
 end_date = datetime.now()
 
 # Connect to the DuckDB database
@@ -23,6 +21,10 @@ conn.execute("""
         PRIMARY KEY (extension, week_number, year)
     )
 """)
+
+# Start from the last known date in the DB, falling back to the initial date
+result = conn.execute("SELECT MAX(_last_update) FROM downloads").fetchone()[0]
+start_date = datetime.combine(result, datetime.min.time()) if result else datetime(2024, 10, 1)
 
 def download_data(conn, endpoint, type):
     # Iterate over each week in the date range
