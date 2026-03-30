@@ -1,9 +1,19 @@
+deployment:
+  basePath: /duckdb-community-extension-analysis
+
 appearance:
   default: system
   switcher: true
 
 theme:
   colorPalettes:
+    compare:
+      light:
+        - "#236aa4"
+        - "#f4b548"
+      dark:
+        - "#71b9f4"
+        - "#f4b548"
     default:
       light:
         - "#236aa4"
