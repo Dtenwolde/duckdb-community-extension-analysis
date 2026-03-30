@@ -62,9 +62,14 @@ def download_data(conn, endpoint, type):
                 # Debug: Print the data fetched for verification
                 print(f"Data fetched for week {iso_year}-W{padded_iso_week}:", weekly_data.head())
                 if not weekly_data.empty:
-                    # Use INSERT OR REPLACE to update or insert data into the `downloads` table
+                    # Insert data, but never overwrite a Regular entry with a Community one
                     conn.executemany("""
-                        INSERT OR REPLACE INTO downloads VALUES (?, ?, ?, ?, ?, ?)
+                        INSERT INTO downloads VALUES (?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (extension, week_number, year) DO UPDATE SET
+                            downloads_last_week = excluded.downloads_last_week,
+                            _last_update = excluded._last_update,
+                            type = excluded.type
+                        WHERE downloads.type != 'Regular'
                     """, weekly_data.values.tolist())
         except (requests.HTTPError, ValueError) as e:
             # Print the error if data for the current week is not available or parsing fails
