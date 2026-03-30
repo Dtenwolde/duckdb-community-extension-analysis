@@ -207,6 +207,143 @@ LIMIT 10;
   </div>
 </Grid>
 
+## Top Movers
+
+```sql top_gainers
+WITH latest_two_weeks AS (
+    SELECT
+        extension,
+        type,
+        downloads_last_week,
+        _last_update,
+        ROW_NUMBER() OVER (PARTITION BY extension ORDER BY _last_update DESC) as rn
+    FROM downloads
+),
+current_week AS (
+    SELECT extension, type, downloads_last_week FROM latest_two_weeks WHERE rn = 1
+),
+prev_week AS (
+    SELECT extension, downloads_last_week as prev_downloads FROM latest_two_weeks WHERE rn = 2
+)
+SELECT
+    c.extension,
+    c.type,
+    c.downloads_last_week,
+    p.prev_downloads,
+    c.downloads_last_week - p.prev_downloads AS absolute_change,
+    (c.downloads_last_week - p.prev_downloads)::FLOAT / NULLIF(p.prev_downloads, 0) AS growth_rate
+FROM current_week c
+JOIN prev_week p ON c.extension = p.extension
+WHERE p.prev_downloads >= 50
+ORDER BY growth_rate DESC
+LIMIT 5
+```
+
+```sql top_losers
+WITH latest_two_weeks AS (
+    SELECT
+        extension,
+        type,
+        downloads_last_week,
+        _last_update,
+        ROW_NUMBER() OVER (PARTITION BY extension ORDER BY _last_update DESC) as rn
+    FROM downloads
+),
+current_week AS (
+    SELECT extension, type, downloads_last_week FROM latest_two_weeks WHERE rn = 1
+),
+prev_week AS (
+    SELECT extension, downloads_last_week as prev_downloads FROM latest_two_weeks WHERE rn = 2
+)
+SELECT
+    c.extension,
+    c.type,
+    c.downloads_last_week,
+    p.prev_downloads,
+    c.downloads_last_week - p.prev_downloads AS absolute_change,
+    (c.downloads_last_week - p.prev_downloads)::FLOAT / NULLIF(p.prev_downloads, 0) AS growth_rate
+FROM current_week c
+JOIN prev_week p ON c.extension = p.extension
+WHERE p.prev_downloads >= 50
+ORDER BY growth_rate ASC
+LIMIT 5
+```
+
+<Grid cols="2" gap="20px">
+  <div>
+    <h3>Biggest Gainers</h3>
+    <DataTable data={top_gainers} rows=5>
+      <Column id="extension" />
+      <Column id="type" />
+      <Column id="downloads_last_week" fmt=num0 title="This Week" />
+      <Column id="absolute_change" contentType=delta fmt=num0 title="Change" />
+      <Column id="growth_rate" contentType=delta fmt=pct1 title="Growth" />
+    </DataTable>
+  </div>
+  <div>
+    <h3>Biggest Losers</h3>
+    <DataTable data={top_losers} rows=5>
+      <Column id="extension" />
+      <Column id="type" />
+      <Column id="downloads_last_week" fmt=num0 title="This Week" />
+      <Column id="absolute_change" contentType=delta fmt=num0 title="Change" />
+      <Column id="growth_rate" contentType=delta fmt=pct1 title="Growth" />
+    </DataTable>
+  </div>
+</Grid>
+
+## This Week
+
+```sql current_week_top
+SELECT
+    extension,
+    type,
+    downloads_last_week
+FROM downloads
+WHERE _last_update = (SELECT MAX(_last_update) FROM downloads)
+ORDER BY downloads_last_week DESC
+LIMIT 20
+```
+
+```sql leaderboard
+SELECT
+    ROW_NUMBER() OVER (ORDER BY total_downloads DESC) as rank,
+    extension,
+    type,
+    total_downloads,
+    last_week_downloads
+FROM (
+    SELECT
+        extension,
+        type,
+        SUM(downloads_last_week) as total_downloads,
+        MAX(CASE WHEN _last_update = (SELECT MAX(_last_update) FROM downloads) THEN downloads_last_week ELSE NULL END) as last_week_downloads
+    FROM downloads
+    GROUP BY extension, type
+) sub
+ORDER BY rank
+```
+
+<BarChart
+  data={current_week_top}
+  x="extension"
+  y="downloads_last_week"
+  series="type"
+  swapXY=true
+  title="Top 20 Extensions This Week"
+  xAxisTitle="Downloads"
+/>
+
+## Leaderboard
+
+<DataTable data={leaderboard} search=true rows=15>
+  <Column id="rank" />
+  <Column id="extension" />
+  <Column id="type" />
+  <Column id="total_downloads" fmt=num0 title="Total Downloads" />
+  <Column id="last_week_downloads" fmt=num0 title="Last Week" />
+</DataTable>
+
 ## Extension Details
 
 ```sql unique_extensions
