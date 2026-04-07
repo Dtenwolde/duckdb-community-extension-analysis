@@ -33,10 +33,11 @@ jobs:
 
       - name: Commit and Push Changes
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           git config --local user.email "dljtw98@gmail.com"
           git config --local user.name "Daniel ten Wolde"
+          git remote set-url origin https://x-access-token:$PAT_TOKEN@github.com/${{ github.repository }}
           git add *
           git commit -m "Update daily download data"
           git push origin evidence
