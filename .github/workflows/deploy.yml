@@ -4,10 +4,20 @@ on:
   push:
     branches:
       - evidence
+  # Rebuild and publish the site after the nightly data update has pushed new data.
+  # Pushes made by that workflow do not fire the push trigger above, so hook into
+  # its completion instead.
+  workflow_run:
+    workflows: ["Update Weekly Data"]
+    types: [completed]
+    branches:
+      - evidence
   workflow_dispatch:
 
 jobs:
   build:
+    # Only build when triggered directly, or when the data update actually succeeded.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
