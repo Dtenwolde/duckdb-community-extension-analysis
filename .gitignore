@@ -25,3 +25,8 @@ node_modules
 venv/
 __pycache__/
 *.pyc
+
+# DuckDB (data now lives in Parquet under data/)
+*.duckdb
+*.duckdb.wal
+*.parquet.tmp

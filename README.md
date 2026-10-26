@@ -1,48 +1,58 @@
-# Evidence Template Project
+# DuckDB extension download analysis
 
-## Using Codespaces
+An [Evidence](https://evidence.dev) site that tracks weekly download statistics for
+DuckDB core and community extensions, published at
+<https://dtenwolde.github.io/duckdb-community-extension-analysis/>.
 
-If you are using this template in Codespaces, click the `Start Evidence` button in the bottom status bar. This will install dependencies and open a preview of your project in your browser - you should get a popup prompting you to open in browser.
+## How it works
 
-Or you can use the following commands to get started:
+Every night a GitHub Actions workflow (`.github/workflows/update_data.yml`) runs two
+scripts and commits the result to the `evidence` branch. When that finishes, the
+deploy workflow rebuilds the site and publishes it to GitHub Pages.
+
+| Script | What it does |
+|---|---|
+| `scripts/fetch_downloads.py` | Fetches the weekly download JSON for core and community extensions from `extensions.duckdb.org` and `community-extensions.duckdb.org`. Weeks that are missing locally are fetched once; the three most recent weeks are re-fetched every run because upstream rewrites the current week nightly. |
+| `scripts/fetch_extension_details.py` | Reads each community extension's `description.yml` from `duckdb/community-extensions` and its GitHub star count. Needs `GITHUB_TOKEN`. |
+
+## Data layout
+
+All data is stored as Parquet under `data/`, hive-partitioned so DuckDB can prune
+by week:
+
+```
+data/
+  downloads/year=2026/week=43/downloads.parquet     one file per ISO week, both registries
+  extension_details/extension_details.parquet       current snapshot of community extension metadata
+  star_history/date=2026-10-26/stars.parquet        one file per day of GitHub star counts
+```
+
+Columns in `downloads`: `extension`, `type` (`Regular` or `Community`),
+`downloads_last_week`, `week_start` (Monday of the ISO week), `source_last_update`
+(upstream timestamp), `fetched_at`. The `year` and `week` columns come from the
+directory names.
+
+Query it directly with DuckDB:
+
+```sql
+SELECT * FROM read_parquet('data/downloads/**/*.parquet', hive_partitioning = true);
+```
+
+The Evidence source definitions in `sources/downloads/` expose these files to the
+pages. A handful of extensions appear in both registries; the `downloads` source
+keeps the core (`Regular`) row in that case.
+
+## Running locally
 
 ```bash
+# data
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python scripts/fetch_downloads.py            # add --all to rebuild every week from upstream
+GITHUB_TOKEN=$(gh auth token) python scripts/fetch_extension_details.py
+
+# site
 npm install
 npm run sources
-npm run dev -- --host 0.0.0.0
+npm run dev
 ```
-
-See [the CLI docs](https://docs.evidence.dev/cli/) for more command information.
-
-**Note:** Codespaces is much faster on the Desktop app. After the Codespace has booted, select the hamburger menu → Open in VS Code Desktop.
-
-## Get Started from VS Code
-
-The easiest way to get started is using the [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=Evidence.evidence-vscode):
-
-
-
-1. Install the extension from the VS Code Marketplace
-2. Open the Command Palette (Ctrl/Cmd + Shift + P) and enter `Evidence: New Evidence Project`
-3. Click `Start Evidence` in the bottom status bar
-
-## Get Started using the CLI
-
-```bash
-npx degit evidence-dev/template my-project
-cd my-project 
-npm install 
-npm run sources
-npm run dev 
-```
-
-Check out the docs for [alternative install methods](https://docs.evidence.dev/getting-started/install-evidence) including Docker, Github Codespaces, and alongside dbt.
-
-
-
-## Learning More
-
-- [Docs](https://docs.evidence.dev/)
-- [Github](https://github.com/evidence-dev/evidence)
-- [Slack Community](https://slack.evidence.dev/)
-- [Evidence Home Page](https://www.evidence.dev)

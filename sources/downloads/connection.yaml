@@ -1,5 +1,6 @@
-# This file was automatically generated
+# The data lives in Parquet files under data/ (see README). Queries below read them
+# directly through an in-memory DuckDB, so no database file is committed.
 name: downloads
 type: duckdb
 options:
-  filename: download_data.duckdb
+  filename: ':memory:'
