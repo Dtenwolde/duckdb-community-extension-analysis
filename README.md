@@ -42,6 +42,20 @@ The Evidence source definitions in `sources/downloads/` expose these files to th
 pages. A handful of extensions appear in both registries; the `downloads` source
 keeps the core (`Regular`) row in that case.
 
+## Site structure
+
+| Page | Content |
+|---|---|
+| `pages/index.md` | Overview: core vs community KPIs, trends with a date range and registry toggle, concentration, top movers, this week, heatmap, leaderboard |
+| `pages/community.md` | Community registry: new extensions, GitHub stars, language and license breakdowns, directory |
+| `pages/compare.md` | Compare up to three extensions (weekly, indexed, cumulative). Accepts `?a=&b=&c=` query parameters |
+| `pages/extension/[extension].md` | One page per extension: downloads, rank, stars, metadata and description |
+| `pages/extension/index.md` | Directory of all extension pages |
+
+The Evidence sources in `sources/downloads/` expose `downloads`, `extension_details`,
+`extension_stats` (one row per extension with totals, growth and sparkline arrays) and
+`star_history`. Core extensions are labelled `Core` in the site; upstream calls them `Regular`.
+
 ## Running locally
 
 ```bash

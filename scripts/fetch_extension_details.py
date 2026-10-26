@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import re
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -113,8 +114,61 @@ def fetch_stars(session: requests.Session, repo: str) -> int | None:
     return response.json().get("stargazers_count")
 
 
+_LIST_ITEM = re.compile(r"^(\s*)([-*+]|\d+[.)])\s+")
+
+
+def normalise_markdown(text: str) -> str:
+    """Make GitHub-flavoured habits parse with Python-Markdown.
+
+    Python-Markdown only recognises a list when a blank line precedes it; description.yml
+    authors usually write lists straight after a paragraph. Insert the blank line.
+    """
+    lines = text.splitlines()
+    out: list[str] = []
+    for i, line in enumerate(lines):
+        prev = lines[i - 1] if i else ""
+        if _LIST_ITEM.match(line) and prev.strip() and not _LIST_ITEM.match(prev) and not prev.startswith(("    ", "\t")):
+            out.append("")
+        out.append(line)
+    return "\n".join(out)
+
+
+# Evidence's stylesheet styles markdown elements through a `markdown` class on each tag
+# (p.markdown, ul.markdown, code.markdown, ...). Tag the generated HTML the same way so the
+# site's own typography applies. Fenced code blocks are left untouched and styled by the page.
+_TAGGABLE = re.compile(r"<(p|ul|ol|li|h[1-6]|code|blockquote|table|thead|tbody|tr|th|td|a|strong|em|del|hr|img)(?=[\s>])")
+_PRE_BLOCK = re.compile(r"<pre>.*?</pre>", re.DOTALL)
+
+
+def tag_for_evidence(html: str) -> str:
+    blocks: list[str] = []
+
+    def stash(m: re.Match) -> str:
+        blocks.append(m.group(0))
+        return f"\x00{len(blocks) - 1}\x00"
+
+    html = _PRE_BLOCK.sub(stash, html)
+    html = _TAGGABLE.sub(r'<\1 class="markdown"', html)
+    return re.sub(r"\x00(\d+)\x00", lambda m: blocks[int(m.group(1))], html)
+
+
 def markdown_or_none(text: str | None) -> str | None:
-    return markdown(text) if text else None
+    if not text:
+        return None
+    html = markdown(normalise_markdown(text), extensions=["fenced_code", "tables", "sane_lists"])
+    return tag_for_evidence(html)
+
+
+def code_block_html(code: str | None, language: str = "sql") -> str | None:
+    """Render a code snippet as an escaped <pre><code> block.
+
+    hello_world is SQL, not markdown: feeding it to the markdown converter would pass
+    any HTML inside string literals straight through to the page.
+    """
+    if not code:
+        return None
+    fenced = f"```{language}\n{code.strip()}\n```"
+    return markdown(fenced, extensions=["fenced_code"])
 
 
 def as_dict(value) -> dict:
@@ -143,7 +197,7 @@ def build_row(name: str, desc: dict, star_count: int | None, fetched_at: datetim
         docs.get("extended_description"),
         markdown_or_none(docs.get("extended_description")),
         docs.get("hello_world"),
-        markdown_or_none(docs.get("hello_world")),
+        code_block_html(docs.get("hello_world")),
         str(ext["version"]) if ext.get("version") is not None else None,
         ext.get("description"),
         ext.get("build"),

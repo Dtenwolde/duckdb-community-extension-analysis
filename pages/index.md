@@ -1,559 +1,340 @@
 ---
 title: DuckDB extension weekly downloads
-description: Explore dynamic insights into weekly and monthly download trends for DuckDB extensions, all in one interactive dashboard!
+description: Weekly and monthly download trends for DuckDB core and community extensions, updated nightly.
 og: /images/main.png
 ---
 
-
-# Weekly Downloads Overview
-
-```sql all_downloads
-select extension, downloads_last_week, year, week_number, type
+```sql latest_week
+select max(week_start) as latest_week, max(week_label) as latest_label
 from downloads
-where _last_update = (select max(_last_update) from downloads)
-order by downloads_last_week desc;
-```
-```sql ordered_data
-WITH extension_totals AS (
-    SELECT 
-        extension,
-        SUM(downloads_last_week) AS total_downloads
-    FROM downloads
-    where type = coalesce(nullif('${inputs.regular_or_community}', ''), 'Regular')
-    GROUP BY extension
-    ORDER BY total_downloads DESC
-    LIMIT 10
-)
-SELECT 
---     array_slice(d.year::VARCHAR, 3, 4) || '-' || d.week_number as week_number,
-    d.extension,
-    d._last_update as date,
-    d.downloads_last_week
-FROM downloads d
-JOIN extension_totals et ON d.extension = et.extension
-ORDER BY et.total_downloads DESC, d.week_number;
 ```
 
-```sql weekly_downloads_for_all_community
-WITH weekly_downloads AS (
-    SELECT
-        _last_update::DATE AS week_date,
-        SUM(downloads_last_week) AS last_week_downloads
-    FROM downloads
-    WHERE type = 'Community'
-    GROUP BY _last_update::DATE
-),
-growth_data AS (
-    SELECT
-        week_date,
-        last_week_downloads,
-        (last_week_downloads - LAG(last_week_downloads) OVER (ORDER BY week_date))
-            / LAG(last_week_downloads) OVER (ORDER BY week_date) AS growth_rate
-    FROM weekly_downloads
-)
-SELECT
-    week_date,
-    last_week_downloads,
-    growth_rate
-FROM growth_data
-ORDER BY week_date DESC
-LIMIT 10;
+```sql weekly_totals
+select week_start, type, sum(downloads_last_week) as downloads, count(*) as extensions
+from downloads
+group by all
+order by week_start
 ```
 
-```sql weekly_downloads_for_all_regular
-WITH weekly_downloads AS (
-    SELECT
-        _last_update::DATE AS week_date,
-        SUM(downloads_last_week) AS last_week_downloads
-    FROM downloads
-    WHERE type = 'Regular'
-    GROUP BY _last_update::DATE
-),
-growth_data AS (
-    SELECT
-        week_date,
-        last_week_downloads,
-        (last_week_downloads - LAG(last_week_downloads) OVER (ORDER BY week_date))
-            / LAG(last_week_downloads) OVER (ORDER BY week_date) AS growth_rate
-    FROM weekly_downloads
+```sql kpi_weekly
+with rolling as (
+    select
+        type,
+        week_start,
+        downloads,
+        sum(downloads) over (partition by type order by week_start rows between 3 preceding and current row) as downloads_4w
+    from ${weekly_totals}
 )
-SELECT
-    week_date,
-    last_week_downloads,
-    growth_rate
-FROM growth_data
-ORDER BY week_date DESC
-LIMIT 10;
+select
+    type,
+    week_start,
+    downloads,
+    (downloads - lag(downloads) over (partition by type order by week_start))
+        / lag(downloads) over (partition by type order by week_start) as growth_rate,
+    downloads_4w,
+    (downloads_4w - lag(downloads_4w, 4) over (partition by type order by week_start))
+        / lag(downloads_4w, 4) over (partition by type order by week_start) as growth_4w
+from rolling
+order by week_start desc
 ```
 
-```sql monthly_downloads_for_all_community
-WITH monthly_downloads AS (
-    SELECT
-        DATE_TRUNC('month', _last_update)::DATE AS month_date,
-        SUM(downloads_last_week) AS total_monthly_downloads
-    FROM downloads
-    WHERE type = 'Community'
-    GROUP BY month_date
-),
-growth_data AS (
-    SELECT
-        month_date,
-        total_monthly_downloads,
-        (total_monthly_downloads - LAG(total_monthly_downloads) OVER (ORDER BY month_date))
-            / LAG(total_monthly_downloads) OVER (ORDER BY month_date) AS growth_rate
-    FROM monthly_downloads
-)
-SELECT
-    month_date,
-    total_monthly_downloads,
-    growth_rate
-FROM growth_data
-ORDER BY month_date DESC
-LIMIT 10;
-```
-```sql monthly_downloads_for_all_regular
-WITH monthly_downloads AS (
-    SELECT
-        DATE_TRUNC('month', _last_update)::DATE AS month_date,
-        SUM(downloads_last_week) AS total_monthly_downloads
-    FROM downloads
-    WHERE type = 'Regular'
-    GROUP BY month_date
-),
-growth_data AS (
-    SELECT
-        month_date,
-        total_monthly_downloads,
-        (total_monthly_downloads - LAG(total_monthly_downloads) OVER (ORDER BY month_date))
-            / LAG(total_monthly_downloads) OVER (ORDER BY month_date) AS growth_rate
-    FROM monthly_downloads
-)
-SELECT
-    month_date,
-    total_monthly_downloads,
-    growth_rate
-FROM growth_data
-ORDER BY month_date DESC
-LIMIT 10;
+```sql kpi_core
+select * from ${kpi_weekly} where type = 'Core' order by week_start desc limit 26
 ```
 
-<Grid cols="2" gap="20px">
-  <!-- Left Column: BigValues -->
-  <Grid cols="2" gap="20px">
-    <Grid cols="1" gap="20px">
-        <BigValue 
-          data={weekly_downloads_for_all_regular} 
-          value="last_week_downloads"
-          sparkline="week_date"
-          fmt=num0
-          comparison="growth_rate"
-          comparisonFmt="pct1"
-          comparisonTitle="vs. Last Week"
-          title="Total Regular Downloads Last Week"
-        />
-        <BigValue 
-          data={monthly_downloads_for_all_regular} 
-          value="total_monthly_downloads"
-          sparkline="month_date"
-          fmt=num0
-          comparison="growth_rate"
-          comparisonFmt="pct1"
-          comparisonTitle="vs. Last Month"
-          title="Total Regular Downloads Last Month"
-        />
-    </Grid>
-    <Grid cols="1" gap="20px">
-        <BigValue 
-          data={weekly_downloads_for_all_community} 
-          value="last_week_downloads"
-          sparkline="week_date"
-          fmt=num0
-          comparison="growth_rate"
-          comparisonFmt="pct1"
-          comparisonTitle="vs. Last Week"
-          title="Total Community Downloads Last Week"
-        />
-        <BigValue 
-          data={monthly_downloads_for_all_community} 
-          value="total_monthly_downloads"
-          sparkline="month_date"
-          fmt=num0
-          comparison="growth_rate"
-          comparisonFmt="pct1"
-          comparisonTitle="vs. Last Month"
-          title="Total Community Downloads Last Month"
-        />
-    </Grid>
-    <LastRefreshed />
-  </Grid>
+```sql kpi_community
+select * from ${kpi_weekly} where type = 'Community' order by week_start desc limit 26
+```
 
-  <!-- Right Column: LineChart and ButtonGroup -->
-  <div style="position: relative;">
-    <div style="position: absolute; top: -30px; right: 0px; z-index: 10; padding: 1px; border-radius: 1px;">
-      <ButtonGroup name=regular_or_community defaultValue="Regular" colorPalette=myColorPalette>
-          <ButtonGroupItem valueLabel="Regular" value="Regular" default />
-          <ButtonGroupItem valueLabel="Community" value="Community" />
-      </ButtonGroup>
-    </div>
-    <LineChart
-      data={ordered_data}
-      x="date"
-      y="downloads_last_week"
-      series="extension"
-      yAxisTitle="Downloads per Week"
-      title="Weekly Downloads per Extension"
-      subtitle="Top 10"
-    />
-  </div>
+<Grid cols=4 gap="16px">
+  <BigValue data={kpi_core} value=downloads title="Core downloads, last week" fmt=num0
+    sparkline=week_start sparklineColor="#236aa4" comparison=growth_rate comparisonFmt=pct1 comparisonTitle="vs. previous week" />
+  <BigValue data={kpi_core} value=downloads_4w title="Core downloads, last 4 weeks" fmt=num0
+    sparkline=week_start sparklineColor="#236aa4" comparison=growth_4w comparisonFmt=pct1 comparisonTitle="vs. previous 4 weeks" />
+  <BigValue data={kpi_community} value=downloads title="Community downloads, last week" fmt=num0
+    sparkline=week_start sparklineColor="#f4b548" comparison=growth_rate comparisonFmt=pct1 comparisonTitle="vs. previous week" />
+  <BigValue data={kpi_community} value=downloads_4w title="Community downloads, last 4 weeks" fmt=num0
+    sparkline=week_start sparklineColor="#f4b548" comparison=growth_4w comparisonFmt=pct1 comparisonTitle="vs. previous 4 weeks" />
 </Grid>
 
-## Top Movers
+<div class="text-xs text-base-content-muted mt-1">
+  Latest week is <Value data={latest_week} column=latest_label />, starting <Value data={latest_week} column=latest_week fmt="mmm d, yyyy" />. Core statistics are published from 2025-W39 and community statistics from 2024-W40. <LastRefreshed prefix="Data refreshed" />
+</div>
+
+## Trends
+
+<div class="flex flex-wrap items-end gap-6 my-4">
+  <DateRange name=range data={weekly_totals} dates=week_start defaultValue="All Time"
+    presetRanges={['Last 3 Months', 'Last 6 Months', 'Last 12 Months', 'All Time']} title="Period" />
+  <ButtonGroup name=type_filter defaultValue="Community" title="Registry">
+    <ButtonGroupItem valueLabel="Community" value="Community" default />
+    <ButtonGroupItem valueLabel="Core" value="Core" />
+  </ButtonGroup>
+</div>
+
+```sql core_vs_community
+select
+    week_start,
+    sum(downloads) filter (where type = 'Core') as "Core",
+    sum(downloads) filter (where type = 'Community') as "Community"
+from ${weekly_totals}
+where week_start between '${inputs.range.start}' and '${inputs.range.end}'
+group by week_start
+order by week_start
+```
+
+```sql top10_trend
+with in_range as (
+    select extension, week_start, downloads_last_week
+    from downloads
+    where type = '${inputs.type_filter}'
+      and week_start between '${inputs.range.start}' and '${inputs.range.end}'
+),
+top as (
+    select extension
+    from in_range
+    group by extension
+    order by sum(downloads_last_week) desc
+    limit 10
+)
+select r.extension, r.week_start, r.downloads_last_week
+from in_range r
+join top using (extension)
+order by r.week_start, r.extension
+```
+
+<Grid cols=2 gap="20px">
+  <LineChart emptySet=pass
+    data={core_vs_community}
+    x=week_start
+    y="Core"
+    y2="Community"
+    yAxisTitle="Core downloads / week"
+    y2AxisTitle="Community downloads / week"
+    seriesColors={{'Core': '#236aa4', 'Community': '#f4b548'}}
+    title="Core vs community downloads"
+    subtitle="Separate axes; community volume is roughly 50x smaller"
+  />
+  <LineChart emptySet=pass
+    data={top10_trend}
+    x=week_start
+    y=downloads_last_week
+    series=extension
+    yAxisTitle="Downloads / week"
+    title="Top 10 {inputs.type_filter.toLowerCase()} extensions"
+    subtitle="Ranked by downloads in the selected period"
+  />
+</Grid>
+
+```sql concentration
+with ranked as (
+    select
+        week_start,
+        extension,
+        downloads_last_week,
+        row_number() over (partition by week_start order by downloads_last_week desc) as rk
+    from downloads
+    where type = '${inputs.type_filter}'
+      and week_start between '${inputs.range.start}' and '${inputs.range.end}'
+)
+select
+    week_start,
+    case when rk <= 10 then 'Top 10' else 'All others' end as bucket,
+    sum(downloads_last_week) as downloads
+from ranked
+group by all
+order by week_start, bucket desc
+```
+
+```sql active_extensions
+select week_start, count(*) as extensions
+from downloads
+where type = '${inputs.type_filter}'
+  and week_start between '${inputs.range.start}' and '${inputs.range.end}'
+group by week_start
+order by week_start
+```
+
+<Grid cols=2 gap="20px">
+  <AreaChart emptySet=pass
+    data={concentration}
+    x=week_start
+    y=downloads
+    series=bucket
+    type=stacked100
+    seriesOrder={['Top 10', 'All others']}
+    seriesColors={{'Top 10': '#236aa4', 'All others': '#a5cdee'}}
+    yAxisTitle="Share of weekly downloads"
+    title="How concentrated are {inputs.type_filter.toLowerCase()} downloads?"
+    subtitle="Share taken by the 10 most downloaded extensions each week"
+  />
+  <LineChart emptySet=pass
+    data={active_extensions}
+    x=week_start
+    y=extensions
+    yAxisTitle="Extensions with downloads"
+    title="Number of {inputs.type_filter.toLowerCase()} extensions"
+    subtitle="Extensions with at least one download that week"
+    seriesColors={{'extensions': '#46a485'}}
+  />
+</Grid>
+
+## Top movers
 
 ```sql top_gainers
-WITH latest_two_weeks AS (
-    SELECT
-        extension,
-        type,
-        downloads_last_week,
-        _last_update,
-        ROW_NUMBER() OVER (PARTITION BY extension ORDER BY _last_update DESC) as rn
-    FROM downloads
-),
-current_week AS (
-    SELECT extension, type, downloads_last_week FROM latest_two_weeks WHERE rn = 1
-),
-prev_week AS (
-    SELECT extension, downloads_last_week as prev_downloads FROM latest_two_weeks WHERE rn = 2
-)
-SELECT
-    c.extension,
-    c.type,
-    c.downloads_last_week,
-    p.prev_downloads,
-    c.downloads_last_week - p.prev_downloads AS absolute_change,
-    (c.downloads_last_week - p.prev_downloads)::FLOAT / NULLIF(p.prev_downloads, 0) AS growth_rate
-FROM current_week c
-JOIN prev_week p ON c.extension = p.extension
-WHERE p.prev_downloads >= 50
-ORDER BY growth_rate DESC
-LIMIT 5
+select
+    extension,
+    type,
+    last_week_downloads,
+    prev_week_downloads,
+    wow_change,
+    wow_growth,
+    '/extension/' || extension as link
+from extension_stats
+where prev_week_downloads >= 50 and last_week_downloads is not null
+order by wow_growth desc
+limit 5
 ```
 
 ```sql top_losers
-WITH latest_two_weeks AS (
-    SELECT
-        extension,
-        type,
-        downloads_last_week,
-        _last_update,
-        ROW_NUMBER() OVER (PARTITION BY extension ORDER BY _last_update DESC) as rn
-    FROM downloads
-),
-current_week AS (
-    SELECT extension, type, downloads_last_week FROM latest_two_weeks WHERE rn = 1
-),
-prev_week AS (
-    SELECT extension, downloads_last_week as prev_downloads FROM latest_two_weeks WHERE rn = 2
-)
-SELECT
-    c.extension,
-    c.type,
-    c.downloads_last_week,
-    p.prev_downloads,
-    c.downloads_last_week - p.prev_downloads AS absolute_change,
-    (c.downloads_last_week - p.prev_downloads)::FLOAT / NULLIF(p.prev_downloads, 0) AS growth_rate
-FROM current_week c
-JOIN prev_week p ON c.extension = p.extension
-WHERE p.prev_downloads >= 50
-ORDER BY growth_rate ASC
-LIMIT 5
+select
+    extension,
+    type,
+    last_week_downloads,
+    prev_week_downloads,
+    wow_change,
+    wow_growth,
+    '/extension/' || extension as link
+from extension_stats
+where prev_week_downloads >= 50 and last_week_downloads is not null
+order by wow_growth asc
+limit 5
 ```
 
-<Grid cols="2" gap="20px">
-  <div>
-    <h3>Biggest Gainers</h3>
-    <DataTable data={top_gainers} rows=5>
-      <Column id="extension" />
-      <Column id="type" />
-      <Column id="downloads_last_week" fmt=num0 title="This Week" />
-      <Column id="absolute_change" contentType=delta fmt=num0 title="Change" />
-      <Column id="growth_rate" contentType=delta fmt=pct1 title="Growth" />
-    </DataTable>
-  </div>
-  <div>
-    <h3>Biggest Losers</h3>
-    <DataTable data={top_losers} rows=5>
-      <Column id="extension" />
-      <Column id="type" />
-      <Column id="downloads_last_week" fmt=num0 title="This Week" />
-      <Column id="absolute_change" contentType=delta fmt=num0 title="Change" />
-      <Column id="growth_rate" contentType=delta fmt=pct1 title="Growth" />
-    </DataTable>
-  </div>
+<Grid cols=2 gap="20px">
+  <DataTable data={top_gainers} link=link compact=true title="Biggest gainers" subtitle="Week over week, extensions with at least 50 downloads the week before">
+    <Column id=extension />
+    <Column id=last_week_downloads fmt=num0 title="Week" />
+    <Column id=wow_change contentType=delta fmt=num0 title="Change" />
+    <Column id=wow_growth contentType=delta fmt=pct1 title="Growth" />
+  </DataTable>
+  <DataTable data={top_losers} link=link compact=true title="Biggest losers" subtitle="Week over week, extensions with at least 50 downloads the week before">
+    <Column id=extension />
+    <Column id=last_week_downloads fmt=num0 title="Week" />
+    <Column id=wow_change contentType=delta fmt=num0 title="Change" />
+    <Column id=wow_growth contentType=delta fmt=pct1 title="Growth" />
+  </DataTable>
 </Grid>
 
-## This Week
+## This week
 
 ```sql current_week_top
-SELECT
+select
+    type_rank_last_week as rank,
     extension,
     type,
-    downloads_last_week
-FROM downloads
-WHERE _last_update = (SELECT MAX(_last_update) FROM downloads)
-ORDER BY downloads_last_week DESC
-LIMIT 20
+    last_week_downloads,
+    wow_growth,
+    '/extension/' || extension as link
+from extension_stats
+where type = '${inputs.type_filter}' and last_week_downloads is not null
+order by last_week_downloads desc
+limit 20
 ```
 
-```sql leaderboard
-SELECT
-    ROW_NUMBER() OVER (ORDER BY total_downloads DESC) as rank,
-    extension,
-    type,
-    total_downloads,
-    last_week_downloads
-FROM (
-    SELECT
-        extension,
-        type,
-        SUM(downloads_last_week) as total_downloads,
-        MAX(CASE WHEN _last_update = (SELECT MAX(_last_update) FROM downloads) THEN downloads_last_week ELSE NULL END) as last_week_downloads
-    FROM downloads
-    GROUP BY extension, type
-) sub
-ORDER BY rank
+<DataTable data={current_week_top} link=link rows=20 title="Top 20 {inputs.type_filter.toLowerCase()} extensions this week" subtitle="Click a row to open the extension">
+  <Column id=rank align=center />
+  <Column id=extension />
+  <Column id=last_week_downloads contentType=bar fmt=num0 title="Downloads" barColor={inputs.type_filter === 'Core' ? '#236aa4' : '#f4b548'} />
+  <Column id=wow_growth contentType=delta fmt=pct1 title="vs. last week" />
+</DataTable>
+
+```sql heatmap
+with top as (
+    select extension
+    from downloads
+    where type = '${inputs.type_filter}'
+      and week_start between '${inputs.range.start}' and '${inputs.range.end}'
+    group by extension
+    order by sum(downloads_last_week) desc
+    limit 30
+)
+select d.extension, d.week_label, d.downloads_last_week
+from downloads d
+join top using (extension)
+where d.week_start between '${inputs.range.start}' and '${inputs.range.end}'
+order by d.week_start
 ```
 
-<BarChart
-  data={current_week_top}
-  x="extension"
-  y="downloads_last_week"
-  series="type"
-  swapXY=true
-  title="Top 20 Extensions This Week"
-  xAxisTitle="Downloads"
+```sql heatmap_scale
+-- cap the colour scale at the 95th percentile so one spike does not wash out every other cell
+select quantile_cont(downloads_last_week, 0.95) as p95 from ${heatmap}
+```
+
+<Heatmap emptySet=pass
+  data={heatmap}
+  x=week_label
+  y=extension
+  value=downloads_last_week
+  valueFmt=num0
+  valueLabels=false
+  colorPalette={['#eef5fb', '#236aa4']}
+  max={heatmap_scale[0]?.p95}
+  ySort=downloads_last_week
+  ySortOrder=desc
+  cellHeight=14
+  xLabelRotation=60
+  legend=true
+  title="Weekly downloads, top 30 {inputs.type_filter.toLowerCase()} extensions"
+  subtitle="Rows are extensions, columns are ISO weeks. Colour scale is capped at the 95th percentile."
 />
 
 ## Leaderboard
 
-<DataTable data={leaderboard} search=true rows=15>
-  <Column id="rank" />
-  <Column id="extension" />
-  <Column id="type" />
-  <Column id="total_downloads" fmt=num0 title="Total Downloads" />
-  <Column id="last_week_downloads" fmt=num0 title="Last Week" />
+```sql sparklines
+-- {week, downloads} structs for DataTable sparkline columns, built here because the source
+-- export does not preserve nested types. DOUBLE avoids BigInt values in the browser.
+select
+    extension,
+    list({'week': week_start, 'downloads': downloads_last_week::DOUBLE} order by week_start) as history,
+    list({'week': week_start, 'downloads': downloads_last_week::DOUBLE} order by week_start)[-12:] as history_12w
+from downloads
+group by extension
+```
+
+```sql leaderboard
+select
+    s.rank_all_time as rank,
+    s.extension,
+    s.type,
+    s.total_downloads,
+    s.last_week_downloads,
+    s.wow_growth,
+    k.history_12w,
+    '/extension/' || s.extension as link
+from extension_stats s
+left join ${sparklines} k using (extension)
+order by rank
+```
+
+<DataTable data={leaderboard} link=link search=true rows=15 title="All extensions" subtitle="Lifetime downloads since tracking began. Click a row to open the extension.">
+  <Column id=rank align=center />
+  <Column id=extension />
+  <Column id=type />
+  <Column id=total_downloads fmt=num0 title="Total" />
+  <Column id=last_week_downloads fmt=num0 title="Last week" />
+  <Column id=wow_growth contentType=delta fmt=pct1 title="vs. prev. week" />
+  <Column id=history_12w contentType=sparkline sparkX=week sparkY=downloads title="Last 12 weeks" />
 </DataTable>
 
-## Extension Details
+## Explore an extension
 
-```sql unique_extensions
-select extension, type
-from downloads
-where type = coalesce(nullif('${inputs.extension_type_filter}', ''), 'Community')
-group by all
-order by extension
+```sql all_extensions
+select extension, type from extension_stats order by extension
 ```
 
-```sql selected_extension_type
-select coalesce(
-    (select type from downloads where extension = '${inputs.selected_item?.value || "duckpgq"}' limit 1),
-    'Community'
-) as type
-```
-
-```sql selected_extension_data
-WITH all_weeks AS (
-    SELECT
-        _last_update::DATE as week_date,
-        downloads_last_week as last_week_downloads,
-        (downloads_last_week - LAG(downloads_last_week) OVER (ORDER BY _last_update::DATE))
-            / LAG(downloads_last_week) OVER (ORDER BY _last_update::DATE) AS growth_rate
-    FROM downloads
-    WHERE extension = '${inputs.selected_item?.value || "duckpgq"}'
-)
-SELECT week_date, last_week_downloads, growth_rate
-FROM all_weeks
-ORDER BY week_date DESC
-LIMIT 10;
-```
-
-```sql selected_extension_data_cumulative
-select 
-        sum(downloads_last_week) as total_downloads
-from downloads
-where extension = '${inputs.selected_item?.value || "duckpgq"}'
-```
-
-```sql selected_extension_monthly
-WITH monthly AS (
-    SELECT
-        DATE_TRUNC('month', _last_update)::DATE AS month_date,
-        SUM(downloads_last_week) AS downloads_last_month
-    FROM downloads
-    WHERE extension = '${inputs.selected_item?.value || "duckpgq"}'
-    GROUP BY DATE_TRUNC('month', _last_update)
-),
-growth_data AS (
-    SELECT
-        month_date,
-        downloads_last_month,
-        (downloads_last_month - LAG(downloads_last_month) OVER (ORDER BY month_date))
-            / LAG(downloads_last_month) OVER (ORDER BY month_date) AS growth_rate
-    FROM monthly
-)
-SELECT month_date, downloads_last_month, growth_rate
-FROM growth_data
-ORDER BY month_date DESC
-LIMIT 10;
-```
-
-```sql extension_details
-select * from extension_details where extension = '${inputs.selected_item?.value || "duckpgq"}'
-```
-
-```sql total_downloads_extension_data
-select sum(downloads_last_week) as total_downloads from downloads where extension = '${inputs.selected_item?.value || "duckpgq"}' group by extension 
-```
-
-```sql downloads_by_week
-select _last_update as date, downloads_last_week as downloads
-from downloads
-where extension = '${inputs.selected_item?.value || "duckpgq"}'
-```
-
-
-<Grid cols="2" gap="30px">
-  <!-- Left Column: Metadata and Links -->
-  <div>
-    <!-- Type filter then extension dropdown -->
-    <ButtonGroup name=extension_type_filter defaultValue="Community">
-        <ButtonGroupItem valueLabel="Community" value="Community" default />
-        <ButtonGroupItem valueLabel="Regular" value="Regular" />
-    </ButtonGroup>
-    <Dropdown
-        name=selected_item
-        data={unique_extensions}
-        value=extension
-        title="Select an Extension"
-        defaultValue="duckpgq"
-    />
-
-    {#if selected_extension_type.length > 0}
-    <Alert status="info">
-        {selected_extension_type[0].type} Extension
-    </Alert>
-    {/if}
-
-    <!-- BigValue Stats -->
-    <Grid cols="1" gap="15px" style="margin-top: 15px;" >
-      <BigValue
-      data={total_downloads_extension_data}
-      value="total_downloads"
-      title="Total Downloads Lifetime"
-      fmt=num0
-      />
-      <BigValue 
-        data={selected_extension_data} 
-        value="last_week_downloads"
-        sparkline="week_date"
-        fmt=num0
-        comparison="growth_rate"
-        comparisonFmt="pct1"
-        comparisonTitle="vs. Last Week"
-        title="Total Downloads Last Week"
-      />
-      <BigValue 
-        data={selected_extension_monthly} 
-        value="downloads_last_month"
-        sparkline="month_date"
-        fmt=num0
-        comparison="growth_rate"
-        comparisonFmt="pct1"
-        comparisonTitle="vs. Last Month"
-        title="Total Downloads Last Month"
-      />
-
-    <div>
-
-    {#if extension_details.length !== 0}
-
-    <div class="p-4 rounded-md bg-gray-200 text-black markdown">
-      <!-- Links and Metadata -->
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <!-- GitHub Link -->
-        <div style="display: flex; align-items: center;">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" width="16" height="16" />
-          <a href="https://github.com/{extension_details[0].repo_url}" target="_blank" style="margin-left: 8px;">View on GitHub</a>
-        </div>
-
-        <!-- Community Page Link -->
-        <div style="display: flex; align-items: center;">
-          <img src="https://fonts.gstatic.com/s/i/materialicons/group/v8/24px.svg" alt="Community" width="16" height="16" />
-          <a href={`https://duckdb.org/community_extensions/extensions/${inputs.selected_item?.value || "duckpgq"}.html`} target="_blank" style="margin-left: 8px;">View on Community Page</a>
-        </div>
-
-        <!-- Stars -->
-        <div style="display: flex; align-items: center;">
-          <img src="https://fonts.gstatic.com/s/i/materialicons/star/v9/24px.svg" alt="Stars" width="16" height="16" />
-          <span style="margin-left: 8px;">Stars: <strong>{extension_details[0].star_count}</strong></span>
-        </div>
-
-        <!-- Version -->
-        <div style="display: flex; align-items: center;">
-          <img src="https://fonts.gstatic.com/s/i/materialicons/update/v6/24px.svg" alt="Version" width="16" height="16" />
-          <span style="margin-left: 8px;">Version: <strong>{extension_details[0].version}</strong></span>
-        </div>
-
-        <!-- Build -->
-        <div style="display: flex; align-items: center;">
-          <img src="https://fonts.gstatic.com/s/i/materialicons/build/v8/24px.svg" alt="Build" width="16" height="16" />
-          <span style="margin-left: 8px;">Build: <strong>{extension_details[0].build}</strong></span>
-        </div>
-
-        <!-- Language -->
-        <div style="display: flex; align-items: center;">
-          <img src="https://fonts.gstatic.com/s/i/materialicons/code/v8/24px.svg" alt="Language" width="16" height="16" />
-          <span style="margin-left: 8px;">Language: <strong>{extension_details[0].language}</strong></span>
-        </div>
-
-        <!-- Maintainers -->
-        <div style="display: flex; align-items: center;">
-          <img src="https://fonts.gstatic.com/s/i/materialicons/group/v8/24px.svg" alt="Maintainers" width="16" height="16" />
-          <span style="margin-left: 8px;">Maintainers: <strong>{extension_details[0].maintainers}</strong></span>
-        </div>
-
-        <!-- Excluded Platforms -->
-        <div style="display: flex; flex-direction: column;">
-          <span><strong>Excluded Platforms:</strong></span>
-          <div style="margin-left: 20px;">{@html extension_details[0].excluded_platforms_html}</div>
-        </div>
-    </div>
-
-    </div>
-
-    {/if}
-
-    </Grid>
-  </div>
-  <!-- Right Column: Line Chart and Description -->
-  <div>
-    <LineChart
-      data={downloads_by_week}
-      x=date
-      y=downloads
-      yAxisTitle="Downloads per Week"
-      title="Weekly Downloads for {inputs.selected_item?.value || 'duckpgq'}"
-    />
-
-    {#if extension_details.length !== 0}
-
-    <!-- Extended Description -->
-    <div class="p-4 rounded-md bg-gray-200 text-black markdown">
-      <h2>Description</h2>
-      {@html extension_details[0].extended_description_html}
-    </div>
-
-    {/if}
-
-  </div>
-</Grid>
+<div class="flex flex-wrap items-end gap-4 my-2">
+  <Dropdown name=jump data={all_extensions} value=extension title="Pick an extension" defaultValue="duckpgq" />
+  <LinkButton url="/extension/{inputs.jump.value}">Open {inputs.jump.value}</LinkButton>
+  <LinkButton url="/extension/">Browse all extensions</LinkButton>
+</div>
