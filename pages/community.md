@@ -1,5 +1,6 @@
 ---
 title: Community extensions
+sidebar_position: 1
 description: All DuckDB community extensions with GitHub metadata, star counts, and download trends.
 ---
 

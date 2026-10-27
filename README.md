@@ -14,6 +14,7 @@ deploy workflow rebuilds the site and publishes it to GitHub Pages.
 |---|---|
 | `scripts/fetch_downloads.py` | Fetches the weekly download JSON for core and community extensions from `extensions.duckdb.org` and `community-extensions.duckdb.org`. Weeks that are missing locally are fetched once; the three most recent weeks are re-fetched every run because upstream rewrites the current week nightly. |
 | `scripts/fetch_extension_details.py` | Reads each community extension's `description.yml` from `duckdb/community-extensions` and its GitHub star count. Needs `GITHUB_TOKEN`. |
+| `scripts/fetch_client_stats.py` | Download statistics for DuckDB's own client libraries. Daily history from PyPI, npm, CRAN and crates.io (backfilled as far as each registry allows: PyPI ~180 days, npm 365 days, crates.io 90 days, CRAN everything) and nightly snapshots of running totals from NuGet, conda-forge, Homebrew, Docker Hub and GitHub (stars and per-asset release downloads). |
 
 ## Data layout
 
@@ -25,6 +26,10 @@ data/
   downloads/year=2026/week=43/downloads.parquet     one file per ISO week, both registries
   extension_details/extension_details.parquet       current snapshot of community extension metadata
   star_history/date=2026-10-26/stars.parquet        one file per day of GitHub star counts
+  client_downloads/channel=pypi/year=2026/month=10/client_downloads.parquet
+                                                    daily client-library downloads, one file per registry and month
+  client_snapshots/date=2026-10-26/client_snapshots.parquet
+                                                    one file per day of running totals from registries without history
 ```
 
 Columns in `downloads`: `extension`, `type` (`Regular` or `Community`),
@@ -51,10 +56,11 @@ keeps the core (`Regular`) row in that case.
 | `pages/compare.md` | Compare up to three extensions (weekly, indexed, cumulative). Accepts `?a=&b=&c=` query parameters |
 | `pages/extension/[extension].md` | One page per extension: downloads, rank, stars, metadata and description |
 | `pages/extension/index.md` | Directory of all extension pages |
+| `pages/clients.md` | Downloads of DuckDB itself across registries: weekly trends, PyPI OS and Python version shares, npm packages, crate versions, running totals and GitHub release downloads by platform |
 
 The Evidence sources in `sources/downloads/` expose `downloads`, `extension_details`,
-`extension_stats` (one row per extension with totals, growth and sparkline arrays) and
-`star_history`. Core extensions are labelled `Core` in the site; upstream calls them `Regular`.
+`extension_stats` (one row per extension with totals and growth), `star_history`,
+`client_downloads` and `client_snapshots`. Core extensions are labelled `Core` in the site; upstream calls them `Regular`.
 
 ## Running locally
 

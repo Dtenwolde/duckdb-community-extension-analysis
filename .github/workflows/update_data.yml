@@ -36,6 +36,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/fetch_extension_details.py
 
+      - name: Fetch client library download statistics
+        # Runs even if the previous step reported failures so one registry cannot block the others.
+        if: ${{ !cancelled() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/fetch_client_stats.py
+
       - name: Commit and Push Changes
         # Commit whatever was fetched even if one of the fetch steps reported failures.
         if: ${{ !cancelled() }}

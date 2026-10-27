@@ -1,5 +1,6 @@
 ---
 title: Compare extensions
+sidebar_position: 2
 description: Compare weekly download trends for up to three DuckDB extensions side by side.
 ---
 

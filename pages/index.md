@@ -164,9 +164,9 @@ order by week_start
     type=stacked100
     seriesOrder={['Top 10', 'All others']}
     seriesColors={{'Top 10': '#236aa4', 'All others': '#a5cdee'}}
-    yAxisTitle="Share of weekly downloads"
+    yFmt=pct0
     title="How concentrated are {inputs.type_filter.toLowerCase()} downloads?"
-    subtitle="Share taken by the 10 most downloaded extensions each week"
+    subtitle="Share of weekly downloads taken by the 10 most downloaded extensions"
   />
   <LineChart emptySet=pass
     data={active_extensions}

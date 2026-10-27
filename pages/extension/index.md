@@ -1,5 +1,6 @@
 ---
 title: All extensions
+sidebar_position: 3
 description: Every DuckDB core and community extension with download statistics, with a page per extension.
 ---
 
