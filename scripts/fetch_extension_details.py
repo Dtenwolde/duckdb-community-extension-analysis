@@ -5,6 +5,10 @@ For each community extension seen in the download statistics, read its
 description.yml from the duckdb/community-extensions repository and the star
 count of its GitHub repository.
 
+The number of HTTP requests does not grow with the number of extensions: all
+description.yml files come from one tarball of the registry, and star counts are
+fetched through the GraphQL API in batches of STARS_BATCH_SIZE repositories.
+
 Outputs:
 
     data/extension_details/extension_details.parquet   current snapshot, rewritten only when something changed
@@ -19,10 +23,13 @@ Requires GITHUB_TOKEN in the environment for the GitHub API.
 from __future__ import annotations
 
 import argparse
+import io
+import json
 import logging
 import os
 import re
 import sys
+import tarfile
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,8 +41,10 @@ from markdown import markdown
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-DESCRIPTION_URL = "https://raw.githubusercontent.com/duckdb/community-extensions/main/extensions/{name}/description.yml"
+REGISTRY_TARBALL_URL = "https://codeload.github.com/duckdb/community-extensions/tar.gz/refs/heads/main"
 GITHUB_API = "https://api.github.com"
+# Repositories per GraphQL request. One request costs a single rate-limit point at this size.
+STARS_BATCH_SIZE = 100
 USER_AGENT = (
     "duckdb-community-extension-analysis/1.0 "
     "(+https://github.com/dtenwolde/duckdb-community-extension-analysis)"
@@ -74,7 +83,7 @@ def make_session(token: str | None) -> requests.Session:
         total=5,
         backoff_factor=2.0,
         status_forcelist=(429, 500, 502, 503, 504),
-        allowed_methods=("GET",),
+        allowed_methods=("GET", "POST"),  # the only POST is the read-only GraphQL query
         respect_retry_after_header=True,
         raise_on_status=False,
     )
@@ -94,13 +103,24 @@ def community_extensions(conn: duckdb.DuckDBPyConnection, downloads_dir: Path) -
     return [r[0] for r in rows]
 
 
-def fetch_description(session: requests.Session, name: str) -> dict | None:
-    response = session.get(DESCRIPTION_URL.format(name=name), timeout=REQUEST_TIMEOUT)
-    if response.status_code == 404:
-        return None  # extension removed from the registry
+_DESCRIPTION_PATH = re.compile(r"^[^/]+/extensions/([^/]+)/description\.yml$")
+
+
+def fetch_descriptions(session: requests.Session) -> dict[str, str]:
+    """Return the raw description.yml text of every extension in the registry, keyed by name.
+
+    The archive is read in memory and nothing is extracted to disk.
+    """
+    response = session.get(REGISTRY_TARBALL_URL, timeout=REQUEST_TIMEOUT)
     response.raise_for_status()
-    data = yaml.safe_load(response.text)
-    return data if isinstance(data, dict) else None
+    descriptions: dict[str, str] = {}
+    with tarfile.open(fileobj=io.BytesIO(response.content), mode="r:gz") as archive:
+        for member in archive:
+            match = _DESCRIPTION_PATH.match(member.name)
+            if not match or not member.isfile():
+                continue
+            descriptions[match.group(1)] = archive.extractfile(member).read().decode("utf-8", errors="replace")
+    return descriptions
 
 
 def fetch_stars(session: requests.Session, repo: str) -> int | None:
@@ -112,6 +132,79 @@ def fetch_stars(session: requests.Session, repo: str) -> int | None:
         return None
     response.raise_for_status()
     return response.json().get("stargazers_count")
+
+
+_REPO_SLUG = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+
+
+def fetch_stars_batch(session: requests.Session, repos: list[str]) -> dict[str, int | None]:
+    """Star counts for one batch of repositories in a single GraphQL request.
+
+    A repository that does not exist maps to None. Repositories whose result could not
+    be determined are left out of the returned mapping. Raises on a failed request.
+    """
+    fields = []
+    for i, repo in enumerate(repos):
+        owner, name = repo.split("/", 1)
+        fields.append(f"r{i}: repository(owner: {json.dumps(owner)}, name: {json.dumps(name)}) {{ stargazerCount }}")
+    query = "query { rateLimit { remaining } " + " ".join(fields) + " }"
+    response = session.post(f"{GITHUB_API}/graphql", json={"query": query}, timeout=REQUEST_TIMEOUT)
+    response.raise_for_status()
+    payload = response.json()
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        raise requests.RequestException(f"GraphQL query returned no data: {payload.get('errors') or payload}")
+
+    remaining = (data.get("rateLimit") or {}).get("remaining")
+    if remaining is not None and remaining < 50:
+        log.warning("GitHub GraphQL rate limit nearly exhausted: %s points remaining", remaining)
+
+    not_found = {
+        error["path"][0]
+        for error in payload.get("errors") or []
+        if error.get("type") == "NOT_FOUND" and error.get("path")
+    }
+    stars: dict[str, int | None] = {}
+    for i, repo in enumerate(repos):
+        alias = f"r{i}"
+        if data.get(alias) is not None:
+            stars[repo] = data[alias]["stargazerCount"]
+        elif alias in not_found:
+            stars[repo] = None
+    return stars
+
+
+def fetch_all_stars(session: requests.Session, repos: list[str]) -> tuple[dict[str, int | None], set[str]]:
+    """Star counts for all repositories, plus the set of repositories whose lookup failed.
+
+    Anything the batched GraphQL query cannot answer is retried one repository at a
+    time through the REST API, so a single bad batch does not fail 100 extensions.
+    """
+    stars: dict[str, int | None] = {}
+    failed: set[str] = set()
+    valid = []
+    for repo in repos:
+        if _REPO_SLUG.match(repo):
+            valid.append(repo)
+        else:
+            log.warning("Not an owner/name repository, no star count: %r", repo)
+            stars[repo] = None
+
+    for start in range(0, len(valid), STARS_BATCH_SIZE):
+        batch = valid[start : start + STARS_BATCH_SIZE]
+        try:
+            stars.update(fetch_stars_batch(session, batch))
+        except (requests.RequestException, ValueError) as exc:
+            log.warning("GraphQL star query failed, falling back to one request per repository: %s", exc)
+        for repo in batch:
+            if repo in stars:
+                continue
+            try:
+                stars[repo] = fetch_stars(session, repo)
+            except requests.RequestException as exc:
+                log.error("%s: %s", repo, exc)
+                failed.add(repo)
+    return stars, failed
 
 
 _LIST_ITEM = re.compile(r"^(\s*)([-*+]|\d+[.)])\s+")
@@ -257,22 +350,47 @@ def main() -> int:
     names = community_extensions(conn, args.data_dir / "downloads")
     log.info("Fetching details for %d community extensions", len(names))
 
-    rows: list[tuple] = []
+    try:
+        descriptions = fetch_descriptions(session)
+    except (requests.RequestException, tarfile.TarError, OSError) as exc:
+        log.error("Could not read the extension registry; keeping the existing snapshot: %s", exc)
+        return 1
+
+    parsed: dict[str, dict] = {}
     failures: list[str] = []
     removed: list[str] = []
     for name in names:
+        text = descriptions.get(name)
+        if text is None:
+            removed.append(name)  # extension removed from the registry
+            continue
         try:
-            desc = fetch_description(session, name)
-            if desc is None:
-                removed.append(name)
-                continue
-            repo = as_dict(desc.get("repo")).get("github")
-            stars = fetch_stars(session, repo) if repo else None
-            rows.append(build_row(name, desc, stars, fetched_at))
-            log.debug("%s: %s stars", name, stars)
-        except (requests.RequestException, yaml.YAMLError) as exc:
+            desc = yaml.safe_load(text)
+        except yaml.YAMLError as exc:
             log.error("%s: %s", name, exc)
             failures.append(name)
+            continue
+        if isinstance(desc, dict):
+            parsed[name] = desc
+        else:
+            removed.append(name)
+
+    def repo_of(desc: dict) -> str | None:
+        repo = as_dict(desc.get("repo")).get("github")
+        return str(repo) if repo else None
+
+    repos = sorted({repo for desc in parsed.values() if (repo := repo_of(desc))})
+    stars, failed_repos = fetch_all_stars(session, repos)
+
+    rows: list[tuple] = []
+    for name, desc in parsed.items():
+        repo = repo_of(desc)
+        if repo in failed_repos:
+            failures.append(name)
+            continue
+        star_count = stars.get(repo) if repo else None
+        rows.append(build_row(name, desc, star_count, fetched_at))
+        log.debug("%s: %s stars", name, star_count)
 
     log.info("%d processed, %d no longer in registry, %d failed", len(rows), len(removed), len(failures))
     if removed:
